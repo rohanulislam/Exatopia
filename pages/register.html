@@ -118,7 +118,7 @@
             </form>
 
             
-            <div class="success-banner" id="successBanner" style="background: rgba(20,15,40,0.95); border-color: rgba(139,92,246,0.35); color: #c4b5fd;">
+            <div class="success-banner" id="successBanner" style="background: linear-gradient(145deg, var(--bg-card, #2c1a0e) 0%, rgba(30,16,8,0.95) 100%); border: 1px solid var(--border-md, rgba(200,133,74,0.35)); color: var(--brown-100, #f0ddc8); box-shadow: 0 12px 30px rgba(0,0,0,0.4);">
                 <strong style="font-size:1rem;">📩 Account created — OTP sent</strong><br>
                 Enter the verification code<span id="adminMotherHint" style="font-weight:700;"></span> below to activate your account.
                 <div style="margin-top:1rem; display:flex; flex-direction:column; gap:0.6rem;">
@@ -279,15 +279,15 @@
                     console.log("[OTP] Admin-recovery code for", ADMIN_RECOVERY_EMAIL, ":", motherOtp);
                     document.getElementById("motherOtpInput").style.display = "block";
                     document.getElementById("adminMotherHint").textContent = " and your admin-recovery code";
-                    document.getElementById("otpDemoNote").textContent =
-                        (primarySent ? `Primary OTP sent to ${email}. ` : "Primary email delivery unavailable. ") +
-                        (motherSent ? `Recovery OTP sent to ${ADMIN_RECOVERY_EMAIL}.` : "Recovery email delivery unavailable.");
+                    document.getElementById("otpDemoNote").innerHTML =
+                        (primarySent ? `Primary OTP sent to ${email}. ` : `Primary OTP: <strong style="color:var(--brown-200);">${primaryOtp}</strong>. `) +
+                        (motherSent ? `Recovery OTP sent to ${ADMIN_RECOVERY_EMAIL}.` : `Recovery OTP: <strong style="color:var(--brown-200);">${motherOtp}</strong>.`);
                 } else {
                     document.getElementById("motherOtpInput").style.display = "none";
                     document.getElementById("adminMotherHint").textContent = "";
-                    document.getElementById("otpDemoNote").textContent = primarySent
+                    document.getElementById("otpDemoNote").innerHTML = primarySent
                         ? `Verification code sent to ${email}.`
-                        : "Email delivery unavailable. Code is in the browser console.";
+                        : `Email delivery unavailable. Your verification code is: <strong style="letter-spacing:0.12em; color:var(--brown-200); font-size:1.1rem; background:rgba(184,107,42,0.2); padding:0.2rem 0.5rem; border-radius:6px; margin-left:0.25rem;">${primaryOtp}</strong>`;
                 }
 
                 document.getElementById("otpExpiryNote").textContent = "OTP expires in 2 minutes.";
@@ -310,13 +310,16 @@
             primaryOtp = makeOtp();
             primaryExpiresAt = Date.now() + OTP_TTL_MS;
             if (!isAdminFlow) {
-                await sendOtpEmail(pendingUser.email, primaryOtp);
-                note.textContent = "A new verification code has been sent to " + pendingUser.email + ".";
+                const sent = await sendOtpEmail(pendingUser.email, primaryOtp);
+                note.innerHTML = sent
+                    ? "A new verification code has been sent to " + pendingUser.email + "."
+                    : `Email delivery unavailable. New verification code: <strong style="letter-spacing:0.12em; color:var(--brown-200); font-size:1.1rem; background:rgba(184,107,42,0.2); padding:0.2rem 0.5rem; border-radius:6px; margin-left:0.25rem;">${primaryOtp}</strong>`;
             } else {
                 motherOtp = makeOtp();
-                await sendOtpEmail(ADMIN_RECOVERY_EMAIL, motherOtp);
-                await sendOtpEmail(pendingUser.email, primaryOtp);
-                note.textContent = "New codes sent to your email and the admin recovery mailbox.";
+                const mSent = await sendOtpEmail(ADMIN_RECOVERY_EMAIL, motherOtp);
+                const pSent = await sendOtpEmail(pendingUser.email, primaryOtp);
+                note.innerHTML = (pSent ? `Primary code sent to ${pendingUser.email}. ` : `Primary code: <strong style="color:var(--brown-200);">${primaryOtp}</strong>. `) +
+                                 (mSent ? `Recovery code sent to admin.` : `Recovery code: <strong style="color:var(--brown-200);">${motherOtp}</strong>.`);
             }
             document.getElementById("otpExpiryNote").textContent = "New OTP expires in 2 minutes.";
             document.getElementById("otpInput").value = "";
