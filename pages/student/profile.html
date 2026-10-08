@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Examinee Profile | Exatopia</title>
+    <link rel="stylesheet" href="../../assets/css/main.css">
+    <style>
+        .profile-container { max-width: 900px; margin: 0 auto; padding: 2.25rem 1.75rem; width: 100%; }
+        .profile-card {
+            background: linear-gradient(145deg, var(--bg-card) 0%, rgba(30,16,8,0.95) 100%);
+            border: 1px solid var(--border-md);
+            border-radius: var(--radius-xl);
+            padding: 2.25rem;
+            margin-bottom: 1.75rem;
+            box-shadow: var(--shadow-md), var(--shadow-glow);
+            position: relative;
+            overflow: hidden;
+        }
+        .profile-card::before {
+            content: "";
+            position: absolute; top:0; left:0; right:0; height:3px;
+            background: linear-gradient(90deg, var(--brown-600), var(--brown-300), var(--brown-400));
+        }
+
+        .profile-header { display: flex; align-items: center; gap: 1.75rem; flex-wrap: wrap; }
+        .avatar-wrap { position: relative; cursor: pointer; flex-shrink: 0; }
+        .avatar {
+            width: 100px; height: 100px; border-radius: 50%; object-fit: cover;
+            border: 3px solid var(--brown-400); background: var(--bg-inset);
+            box-shadow: 0 0 0 5px rgba(160,98,42,0.15), var(--shadow-md);
+        }
+        .avatar-overlay {
+            position: absolute; inset: 0; border-radius: 50%;
+            background: rgba(26,15,8,0.75); display: flex; align-items: center; justify-content: center;
+            opacity: 0; transition: opacity 0.2s; font-size: 0.72rem; color: var(--brown-100);
+            text-align: center; padding: 4px; font-weight: 600;
+        }
+        .avatar-wrap:hover .avatar-overlay { opacity: 1; }
+
+        .profile-info h2 { font-size: 1.55rem; color: var(--text-heading); margin-bottom: 0.25rem; }
+        .role-badge {
+            display: inline-flex; align-items: center;
+            background: rgba(160,98,42,0.15); color: var(--brown-300); border: 1px solid rgba(200,133,74,0.3);
+            padding: 0.2rem 0.75rem; border-radius: 999px; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;
+        }
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin-top: 1.5rem; }
+        @media(max-width: 600px) { .info-grid { grid-template-columns: 1fr; } }
+        .info-item label { display: block; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
+        .info-item p { font-size: 0.95rem; color: var(--text-heading); }
+
+        .avg-grade-box {
+            text-align: center; padding: 1.25rem 1.5rem;
+            background: var(--bg-inset); border-radius: var(--radius-lg); border: 1px solid var(--border-md);
+            box-shadow: var(--shadow-sm);
+        }
+        .avg-grade-letter { font-size: 3.2rem; font-weight: 900; line-height: 1; color: var(--brown-200); }
+        .avg-grade-label  { font-size: 0.78rem; color: var(--text-muted); margin-top: 0.35rem; text-transform: uppercase; letter-spacing: 0.05em; }
+
+        .stat-box {
+            background: var(--bg-inset); border-radius: var(--radius-lg); border: 1px solid var(--border-md);
+            padding: 1.25rem 1rem; text-align: center; box-shadow: var(--shadow-sm);
+        }
+        .stat-num { font-size: 2rem; font-weight: 900; color: var(--brown-200); }
+
+        .section-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 1.25rem; color: var(--brown-200); display: flex; align-items: center; gap: 0.5rem; }
+        .chart-legend  { display: flex; flex-direction: column; gap: 0.5rem; flex: 1; min-width: 160px; }
+        .legend-item   { display: flex; align-items: center; gap: 0.5rem; font-size: 0.84rem; color: var(--text-main); }
+        .legend-dot    { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+
+        .history-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; white-space: nowrap; }
+        .history-table th { background: var(--bg-inset); color: var(--text-muted); padding: 0.75rem 1rem; text-align: left; font-weight: 700; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid var(--border-md); white-space: nowrap; }
+        .history-table td { padding: 0.85rem 1rem; border-bottom: 1px solid var(--border); vertical-align: middle; color: var(--text-main); }
+        .history-table tr:last-child td { border-bottom: none; }
+        .history-table tr:hover td { background: rgba(92,51,23,0.15); }
+
+        .grade-pill { display: inline-block; padding: 0.2rem 0.65rem; border-radius: 999px; font-size: 0.78rem; font-weight: bold; }
+        .marks-display { font-size: 0.95rem; font-weight: 700; color: var(--brown-200); }
+
+        .tab-btns { display: flex; gap: 0.25rem; margin-bottom: 1.75rem; border-bottom: 1px solid var(--border); overflow-x: auto; }
+        .tab-btn { background: none; border: none; color: var(--text-muted); padding: 0.65rem 1.2rem; cursor: pointer; font-size: 0.9rem; font-weight: 600; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: color 0.2s, border-color 0.2s; font-family: inherit; }
+        .tab-btn:hover { color: var(--brown-200); }
+        .tab-btn.active { color: var(--brown-100); border-bottom-color: var(--accent); }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        .modal-overlay { position: fixed; inset: 0; background: rgba(15,8,3,0.85); backdrop-filter: blur(6px); display: none; align-items: center; justify-content: center; z-index: 1000; }
+        .modal-overlay.open { display: flex; }
+        .modal-box { background: var(--bg-card); border: 1px solid var(--border-md); border-radius: var(--radius-lg); padding: 2rem; width: 100%; max-width: 420px; box-shadow: var(--shadow-lg); }
+    </style>
+</head>
+<body>
+    
+    <nav class="navbar">
+        <a href="../../index.html" class="logo" style="text-decoration:none;"><span class="logo-e">E</span>Xatopia</a>
+        <button id="menuToggle" class="menu-toggle" aria-label="Menu">☰</button>
+        <div class="nav-links" id="navLinks">
+            <a href="../../index.html">Home</a>
+            <a href="../../pages/student/profile.html">Examinee Profile</a>
+            <a href="../../pages/teacher/profile.html">Examiner Profile</a>
+            <a href="../../pages/student/dashboard.html">Dashboard</a>
+            <a href="../../pages/student/exams.html">Exams</a>
+            <a href="../../pages/teacher/create-exam.html">Set Exam</a>
+            <a href="../../pages/student/viva.html">Viva</a>
+            <a href="../../pages/admin/dashboard.html">Dashboard</a>
+            <a href="../../pages/login.html">Sign In</a>
+            <a href="../../pages/register.html">Register</a>
+            <button id="logoutBtn" class="btn" style="background:#dc2626; color:white; border:none; cursor:pointer; margin-left:1rem;">Logout</button>
+        </div>
+    </nav>
+
+    
+    <div class="modal-overlay" id="pwdModal">
+        <div class="modal-box">
+            <h3 style="margin-bottom:1rem;">🔒 Confirm Your Password</h3>
+            <p style="color:var(--text-muted);font-size:0.88rem;margin-bottom:1rem;">For security, please enter your current password to save changes.</p>
+            <input type="password" id="confirmPwdInput" class="form-input" placeholder="Current password" style="margin-bottom:1rem;">
+            <p id="pwdModalError" style="color:#ef4444;font-size:0.82rem;margin-bottom:0.75rem;min-height:1.1rem;"></p>
+            <div style="display:flex;gap:0.75rem;">
+                <button id="pwdModalConfirmBtn" class="btn btn-primary btn-sm" style="cursor:pointer;">Confirm & Save</button>
+                <button id="pwdModalCancelBtn" class="btn btn-sm" style="background:var(--bg-inset);color:var(--text-main);border:1px solid var(--border-md);cursor:pointer;">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <main class="profile-container">
+        
+        <div class="profile-card">
+            <div class="profile-header">
+                <div class="avatar-wrap" id="avatarWrap" title="Click to upload photo">
+                    <img src="" alt="Profile" class="avatar" id="avatarImg">
+                    <div class="avatar-overlay">📷 Change<br>Photo</div>
+                    <input type="file" id="photoInput" accept="image/*" style="display:none;">
+                </div>
+                <div class="profile-info" style="flex:1;">
+                    <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
+                        <h2 id="profileName">Loading...</h2>
+                        <span class="role-badge" id="roleBadge">examinee</span>
+                    </div>
+                    <p style="color:var(--text-muted);font-size:0.9rem;margin:0.3rem 0;">📧 <span id="profileEmail">—</span></p>
+                    <p style="color:var(--text-muted);font-size:0.9rem;">🏛 <span id="profileInstitution">—</span></p>
+                </div>
+                <div class="avg-grade-box" style="min-width:110px;">
+                    <div class="avg-grade-letter" id="avgGradeLetter" style="color:var(--brown-200);">—</div>
+                    <div class="avg-grade-label">Average Grade</div>
+                    <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.2rem;" id="avgPctLabel">—</div>
+                </div>
+            </div>
+        </div>
+
+        
+        <div class="tab-btns">
+            <button class="tab-btn active" data-tab="overview">📊 Overview</button>
+            <button class="tab-btn" data-tab="history">📋 Exam History</button>
+            <button class="tab-btn" data-tab="edit">✏️ Edit Profile</button>
+            <button class="tab-btn" data-tab="security">🔐 Security</button>
+        </div>
+
+        
+        <div class="tab-content active" id="tab-overview">
+            <div class="profile-card">
+                <div class="section-title">📈 Grade Distribution</div>
+                <div style="display:flex;gap:2rem;align-items:center;flex-wrap:wrap;">
+                    <canvas id="gradeChart" width="220" height="220" style="width:220px;height:220px;flex-shrink:0;"></canvas>
+                    <div class="chart-legend" id="chartLegend"></div>
+                </div>
+                <p id="noStatsMsg" style="color:var(--text-muted);font-size:0.9rem;display:none;">No graded exams yet. Complete some exams to see your grade distribution.</p>
+            </div>
+            <div class="profile-card">
+                <div class="section-title">📌 Quick Stats</div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:1rem;">
+                    <div class="stat-box">
+                        <div class="stat-num" id="statTotal">0</div>
+                        <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.35rem;text-transform:uppercase;letter-spacing:0.04em;font-weight:600;">Exams Taken</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-num" id="statAvgPct">0%</div>
+                        <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.35rem;text-transform:uppercase;letter-spacing:0.04em;font-weight:600;">Avg Score</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-num" id="statBestGrade">—</div>
+                        <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.35rem;text-transform:uppercase;letter-spacing:0.04em;font-weight:600;">Best Grade</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        
+        <div class="tab-content" id="tab-history">
+            <div class="profile-card">
+                <div class="section-title">📋 Exam History</div>
+                <div id="historyContainer">
+                    <p style="color:var(--text-muted);">Loading history...</p>
+                </div>
+            </div>
+        </div>
+
+        
+        <div class="tab-content" id="tab-edit">
+            <div class="profile-card">
+                <div class="section-title">✏️ Edit Profile Information</div>
+                <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:1.25rem;">⚠️ You will be asked to confirm your current password before saving.</p>
+                <form id="editProfileForm">
+                    <div style="margin-bottom:1rem;">
+                        <label style="font-size:0.8rem;color:var(--text-muted);">Full Name</label>
+                        <input type="text" id="editName" class="form-input" required>
+                    </div>
+                    <div style="margin-bottom:1.5rem;">
+                        <label style="font-size:0.8rem;color:var(--text-muted);">Institution / University</label>
+                        <input type="text" id="editInstitution" class="form-input" placeholder="e.g. MIT, Harvard...">
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="cursor:pointer;">Save Changes</button>
+                    <p id="editStatus" style="margin-top:0.75rem;font-size:0.85rem;"></p>
+                </form>
+            </div>
+        </div>
+
+        
+        <div class="tab-content" id="tab-security">
+            <div class="profile-card">
+                <div class="section-title">🔐 Security Settings</div>
+
+                <div style="margin-bottom:2rem;">
+                    <h4 style="margin-bottom:0.5rem;">Forgot Password (OTP Verification)</h4>
+                    <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:0.75rem;">We'll send a 6-digit code to <strong id="fpEmailDisplay">—</strong>. Verify it to receive your password reset link.</p>
+                    <button type="button" id="fpSendOtpBtn" class="btn" style="background:#1e3a8a;color:#93c5fd;border:1px solid #3b82f6;cursor:pointer;">Send Reset Code</button>
+                    <div id="fpOtpWrap" style="display:none;margin-top:1rem;">
+                        <input type="text" id="fpOtpInput" class="form-input" maxlength="6" placeholder="Enter 6-digit OTP" style="margin-bottom:0.75rem;">
+                        <div style="display:flex;gap:0.5rem;">
+                            <button type="button" id="fpVerifyOtpBtn" class="btn btn-primary" style="cursor:pointer;">Verify & Send Reset Link</button>
+                            <button type="button" id="fpResendOtpBtn" class="btn" style="cursor:pointer;">🔁 Resend</button>
+                        </div>
+                    </div>
+                    <p id="fpStatus" style="font-size:0.82rem;margin-top:0.5rem;min-height:1rem;"></p>
+                </div>
+
+                <div>
+                    <h4 style="margin-bottom:0.5rem;">Change Password</h4>
+                    <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:0.75rem;">You must confirm your current password to set a new one.</p>
+                    <form id="changePwdForm">
+                        <div style="margin-bottom:0.75rem;">
+                            <label style="font-size:0.8rem;color:var(--text-muted);">Current Password</label>
+                            <input type="password" id="currentPwd" class="form-input" required>
+                        </div>
+                        <div style="margin-bottom:0.75rem;">
+                            <label style="font-size:0.8rem;color:var(--text-muted);">New Password</label>
+                            <input type="password" id="newPwd" class="form-input" required minlength="6">
+                        </div>
+                        <div style="margin-bottom:1rem;">
+                            <label style="font-size:0.8rem;color:var(--text-muted);">Confirm New Password</label>
+                            <input type="password" id="confirmPwd" class="form-input" required minlength="6">
+                        </div>
+                        <button type="submit" class="btn btn-primary" style="cursor:pointer;">Update Password</button>
+                        <p id="pwdStatus" style="margin-top:0.75rem;font-size:0.85rem;"></p>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script type="module">
+        import { protectRoute } from "../../js/guard.js";
+        import { auth } from "../../js/firebase-config.js";
+        import { logoutUser, getUserProfile, updateUserProfile, changeUserPassword, sendPasswordReset } from "../../js/auth.js";
+        import { getStudentProfileStats, getExamQuestions, getMockExam } from "../../js/exam.js";
+        import { getGrade, showToast, drawPieChart, compressImage } from "../../js/ui-utils.js";
+
+        protectRoute(["student"]);
+
+        
+        document.querySelectorAll(".tab-btn").forEach(btn => {
+            btn.addEventListener("click", () => {
+                document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+                document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
+                btn.classList.add("active");
+                document.getElementById("tab-" + btn.dataset.tab).classList.add("active");
+            });
+        });
+
+        let pendingProfileUpdates = null;
+
+        
+        function openPwdModal(onConfirm) {
+            document.getElementById("confirmPwdInput").value = "";
+            document.getElementById("pwdModalError").textContent = "";
+            document.getElementById("pwdModal").classList.add("open");
+
+            const confirmBtn = document.getElementById("pwdModalConfirmBtn");
+            const cancelBtn = document.getElementById("pwdModalCancelBtn");
+
+            const newConfirm = confirmBtn.cloneNode(true);
+            confirmBtn.parentNode.replaceChild(newConfirm, confirmBtn);
+            const newCancel = cancelBtn.cloneNode(true);
+            cancelBtn.parentNode.replaceChild(newCancel, cancelBtn);
+
+            document.getElementById("pwdModalConfirmBtn").addEventListener("click", async () => {
+                const pwd = document.getElementById("confirmPwdInput").value;
+                if (!pwd) { document.getElementById("pwdModalError").textContent = "Please enter your password."; return; }
+                document.getElementById("pwdModal").classList.remove("open");
+                onConfirm(pwd);
+            });
+            document.getElementById("pwdModalCancelBtn").addEventListener("click", () => {
+                document.getElementById("pwdModal").classList.remove("open");
+            });
+        }
+
+        
+        let currentProfile = null;
+        async function loadProfile() {
+            const user = auth.currentUser;
+            if (!user) return;
+            const profile = await getUserProfile(user.uid);
+            currentProfile = profile;
+
+            const photoURL = profile?.photoURL || user.photoURL || "";
+            const avatarEl = document.getElementById("avatarImg");
+            avatarEl.src = photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile?.name || user.email)}&background=4f46e5&color=fff&size=96`;
+            document.getElementById("profileName").textContent = profile?.name || user.displayName || user.email;
+            document.getElementById("profileEmail").textContent = user.email;
+            document.getElementById("profileInstitution").textContent = profile?.institution || "Not specified";
+            document.getElementById("roleBadge").textContent = (profile?.role || "student") === "student" ? "examinee" : profile.role;
+
+            
+            document.getElementById("editName").value = profile?.name || user.displayName || "";
+            document.getElementById("editInstitution").value = profile?.institution || "";
+
+            
+            await loadStats();
+        }
+
+        async function loadStats() {
+            const stats = await getStudentProfileStats();
+
+            const gradeInfo = stats.avgGrade;
+            document.getElementById("avgGradeLetter").textContent = gradeInfo.grade;
+            document.getElementById("avgGradeLetter").style.color = gradeInfo.color;
+            document.getElementById("avgPctLabel").textContent = stats.avgPercentage + "% Avg";
+
+            document.getElementById("statTotal").textContent = stats.totalExamsTaken;
+            document.getElementById("statAvgPct").textContent = stats.avgPercentage + "%";
+
+            
+            const gradeOrder = ["A","B","C","D","E","Fail"];
+            const bestGradeEntry = stats.gradeDistribution.find(g => g.count > 0);
+            document.getElementById("statBestGrade").textContent = bestGradeEntry ? bestGradeEntry.grade : "—";
+
+            
+            if (stats.totalExamsTaken > 0) {
+                document.getElementById("noStatsMsg").style.display = "none";
+                drawPieChart(document.getElementById("gradeChart"), stats.gradeDistribution);
+
+                const legendEl = document.getElementById("chartLegend");
+                legendEl.innerHTML = stats.gradeDistribution.map(g => `
+                    <div class="legend-item">
+                        <div class="legend-dot" style="background:${g.color};"></div>
+                        <span style="color:#cbd5e1;">${g.label}: <strong>${g.count}</strong> (${g.percentage}%)</span>
+                    </div>
+                `).join("");
+            } else {
+                document.getElementById("noStatsMsg").style.display = "block";
+            }
+
+            
+            loadHistory(stats.history);
+        }
+
+        function loadHistory(history) {
+            const container = document.getElementById("historyContainer");
+            if (!history || history.length === 0) {
+                container.innerHTML = `<p style="color:var(--text-muted);">No exam history yet. Complete some exams to see your results here.</p>`;
+                return;
+            }
+
+            const rows = history.map((att, idx) => {
+                const typeTag = att.isViva
+                    ? `<span style="background:rgba(120,53,15,0.3);color:var(--accent);border:1px solid rgba(200,133,74,0.4);padding:0.15rem 0.5rem;border-radius:4px;font-size:0.72rem;font-weight:600;">Viva</span>`
+                    : att.isMock
+                    ? `<span style="background:var(--bg-inset);color:var(--text-muted);border:1px solid var(--border-md);padding:0.15rem 0.5rem;border-radius:4px;font-size:0.72rem;font-weight:600;">Practice</span>`
+                    : `<span style="background:rgba(160,98,42,0.25);color:var(--brown-200);border:1px solid rgba(200,133,74,0.4);padding:0.15rem 0.5rem;border-radius:4px;font-size:0.72rem;font-weight:600;">Formal</span>`;
+
+                const marksText = (att.total > 0)
+                    ? `<span class="marks-display">${att.score} / ${att.total}</span> <span style="color:var(--text-muted);font-size:0.8rem;">(${att.percentage}%)</span>`
+                    : `<span style="color:var(--text-muted);">N/A</span>`;
+
+                const dateStr = att.submittedAt
+                    ? (att.submittedAt.toDate ? att.submittedAt.toDate().toLocaleDateString() : new Date(att.submittedAt).toLocaleDateString())
+                    : "—";
+
+                const transcriptToggle = (att.isViva && att.messages && att.messages.length)
+                    ? `<br><button type="button" class="btn-sm" style="background:var(--bg-card);color:var(--brown-200);border:1px solid var(--border-md);border-radius:6px;cursor:pointer;margin-top:0.35rem;font-size:0.75rem;padding:0.3rem 0.7rem;" onclick="const el = document.getElementById('profile_viva_${idx}'); el.style.display = el.style.display === 'none' ? 'table-row' : 'none';">💬 Conversation (${att.messages.length})</button>`
+                    : '';
+
+                const transcriptRow = (att.isViva && att.messages && att.messages.length)
+                    ? `<tr id="profile_viva_${idx}" style="display:none;">
+                        <td colspan="5" style="background:var(--bg-inset);">
+                            ${att.messages.map(m => `
+                                <div style="padding:0.55rem 0.7rem;border-radius:6px;margin-top:0.35rem;font-size:0.82rem;border:1px solid var(--border-md);background:var(--bg-card);">
+                                    <strong style="color:${m.role === 'student' ? 'var(--accent)' : 'var(--brown-200)'};">${m.role === 'student' ? '🎓 You' : '🤖 Examiner'}:</strong>
+                                    <span style="color:var(--text-main);">${(m.text || '').replace(/</g, '&lt;')}</span>
+                                </div>`).join('')}
+                        </td>
+                    </tr>`
+                    : '';
+
+                const questionsToggle = (!att.isViva && att.examId && att.examId !== "N/A")
+                    ? `<br><button type="button" class="btn-sm" style="background:var(--bg-card);color:var(--brown-200);border:1px solid var(--border-md);border-radius:6px;cursor:pointer;margin-top:0.35rem;font-size:0.75rem;padding:0.3rem 0.7rem;" onclick="toggleProfileQuestions('${att.isMock ? (att.mockId || att.examId) : att.examId}', 'pq_row_${idx}', 'pq_cell_${idx}', ${!!att.isMock})">📄 Questions</button>`
+                    : '';
+
+                const questionsRow = (!att.isViva && att.examId && att.examId !== "N/A")
+                    ? `<tr id="pq_row_${idx}" style="display:none;"><td colspan="5" style="background:var(--bg-inset);"><div id="pq_cell_${idx}"></div></td></tr>`
+                    : '';
+
+                return `<tr>
+                    <td>${att.examTitle || "Exam"}<br>${typeTag}${transcriptToggle}${questionsToggle}</td>
+                    <td>${marksText}</td>
+                    <td><span class="grade-pill" style="background:${att.gradeBg};color:${att.gradeColor};">${att.grade}</span></td>
+                    <td style="color:var(--text-muted);font-size:0.82rem;">${dateStr}</td>
+                    <td>${(() => {
+                        const vc = att.violationCount || 0;
+                        const vm = att.maxViolations || 0;
+                        const exceeded = (vm > 0 && vc >= vm) || att.autoSubmitted;
+                        if (vc === 0 && !att.autoSubmitted) return `<span style="color:#86efac;font-size:0.78rem;">${vc}/${vm || 0} — clean</span>`;
+                        return `<span class="grade-pill" style="background:${exceeded ? '#7f1d1d' : '#78350f'};color:${exceeded ? '#fecaca' : '#fde68a'};">${vc}/${vm || '—'}</span>`;
+                    })()}</td>
+                </tr>${transcriptRow}${questionsRow}`;
+            }).join("");
+
+            container.innerHTML = `
+                <div style="overflow-x:auto;">
+                    <table class="history-table">
+                        <thead><tr>
+                            <th>Exam</th>
+                            <th>Marks</th>
+                            <th>Grade</th>
+                            <th>Date</th>
+                            <th>Violation</th>
+                        </tr></thead>
+                        <tbody>${rows}</tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        
+        document.getElementById("avatarWrap").addEventListener("click", () => {
+            document.getElementById("photoInput").click();
+        });
+        document.getElementById("photoInput").addEventListener("change", async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            try {
+                const compressed = await compressImage(file, 300, 0.85);
+                openPwdModal(async (pwd) => {
+                    try {
+                        await updateUserProfile(pwd, { photoURL: compressed });
+                        document.getElementById("avatarImg").src = compressed;
+                        showToast("Profile photo updated!", "success");
+                    } catch (err) {
+                        showToast("Error updating photo: " + err.message, "error");
+                    }
+                });
+            } catch (err) {
+                showToast("Image error: " + err.message, "error");
+            }
+        });
+
+        
+        document.getElementById("editProfileForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const name = document.getElementById("editName").value.trim();
+            const institution = document.getElementById("editInstitution").value.trim();
+            if (!name) { showToast("Name cannot be empty.", "error"); return; }
+
+            openPwdModal(async (pwd) => {
+                const statusEl = document.getElementById("editStatus");
+                statusEl.style.color = "#a5b4fc";
+                statusEl.textContent = "Saving...";
+                try {
+                    await updateUserProfile(pwd, { name, institution });
+                    document.getElementById("profileName").textContent = name;
+                    document.getElementById("profileInstitution").textContent = institution || "Not specified";
+                    statusEl.style.color = "#22c55e";
+                    statusEl.textContent = "✓ Profile updated successfully!";
+                    showToast("Profile updated!", "success");
+                } catch (err) {
+                    statusEl.style.color = "#ef4444";
+                    statusEl.textContent = "Error: " + err.message;
+                }
+            });
+        });
+
+        
+        const OTP_TTL_MS = 120000;
+        let forgotOtp = null, forgotOtpExpiresAt = 0;
+        const fpSendBtn = document.getElementById("fpSendOtpBtn");
+        const fpVerifyBtn = document.getElementById("fpVerifyOtpBtn");
+        const fpResendBtn = document.getElementById("fpResendOtpBtn");
+        const fpEmailDisplay = document.getElementById("fpEmailDisplay");
+
+        fpEmailDisplay.textContent = auth.currentUser?.email || "your account email";
+
+        fpSendBtn.addEventListener("click", async () => {
+            const email = auth.currentUser?.email;
+            const statusEl = document.getElementById("fpStatus");
+            if (!email) { statusEl.textContent = "Not signed in."; return; }
+            fpEmailDisplay.textContent = email;
+            forgotOtp = String(Math.floor(100000 + Math.random() * 900000));
+            forgotOtpExpiresAt = Date.now() + OTP_TTL_MS;
+            console.log("[Forgot pwd] OTP for", email, ":", forgotOtp);
+            statusEl.style.color = "#a5b4fc";
+            statusEl.textContent = "Sending OTP...";
+            const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+            const endpoints = [];
+            if (isLocal && window.location.port !== "3000") {
+                endpoints.push("http://localhost:3000/api/send-otp");
+            }
+            endpoints.push("/api/send-otp");
+            if (isLocal) {
+                endpoints.push("http://localhost:3000/api/send-otp");
+            }
+            endpoints.push("../../api/send-otp.php");
+            let sent = false;
+            for (const url of endpoints) {
+                try {
+                    const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, otp: forgotOtp }) });
+                    const d = await r.json().catch(() => null);
+                    if (d && d.status === "success") { sent = true; break; }
+                } catch (e) { console.warn("OTP endpoint failed:", url, e.message); }
+            }
+            document.getElementById("fpOtpWrap").style.display = "block";
+            statusEl.style.color = sent ? "#22c55e" : "#f59e0b";
+            statusEl.textContent = sent ? "✓ OTP sent to your email. Expires in 2 minutes." : "Email delivery unavailable. Code is in the browser console.";
+        });
+
+        fpResendBtn.addEventListener("click", () => fpSendBtn.click());
+
+        fpVerifyBtn.addEventListener("click", async () => {
+            const statusEl = document.getElementById("fpStatus");
+            const code = document.getElementById("fpOtpInput").value.trim();
+            statusEl.style.color = "#ef4444";
+            if (!forgotOtp) { statusEl.textContent = "Request a code first."; return; }
+            if (Date.now() > forgotOtpExpiresAt) { statusEl.textContent = "OTP expired. Please resend."; return; }
+            if (code !== forgotOtp) { statusEl.textContent = "Incorrect OTP."; return; }
+            try {
+                await sendPasswordReset(auth.currentUser?.email);
+                forgotOtp = null;
+                document.getElementById("fpOtpWrap").style.display = "none";
+                statusEl.style.color = "#22c55e";
+                statusEl.textContent = "✓ Email verified. A password reset link has been sent to your email.";
+                showToast("Reset link sent!", "success");
+            } catch (err) {
+                statusEl.textContent = "Error: " + err.message;
+            }
+        });
+
+        
+        document.getElementById("changePwdForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const currentPwd = document.getElementById("currentPwd").value;
+            const newPwd = document.getElementById("newPwd").value;
+            const confirmPwd = document.getElementById("confirmPwd").value;
+            const statusEl = document.getElementById("pwdStatus");
+
+            if (newPwd !== confirmPwd) {
+                statusEl.style.color = "#ef4444";
+                statusEl.textContent = "New passwords do not match.";
+                return;
+            }
+            statusEl.style.color = "#a5b4fc";
+            statusEl.textContent = "Updating password...";
+            try {
+                await changeUserPassword(currentPwd, newPwd);
+                statusEl.style.color = "#22c55e";
+                statusEl.textContent = "✓ Password changed successfully!";
+                document.getElementById("changePwdForm").reset();
+                showToast("Password updated!", "success");
+            } catch (err) {
+                statusEl.style.color = "#ef4444";
+                statusEl.textContent = "Error: " + err.message;
+            }
+        });
+
+        window.toggleProfileQuestions = async (examId, rowId, cellId, isMock = false) => {
+            const row = document.getElementById(rowId);
+            const cell = document.getElementById(cellId);
+            if (!row || !cell) return;
+            if (row.style.display === "table-row") { row.style.display = "none"; return; }
+            row.style.display = "table-row";
+            if (cell.dataset.loaded === "1") return;
+            cell.dataset.loaded = "1";
+            cell.innerHTML = '<p style="font-size:0.8rem;color:var(--text-muted);">Loading questions...</p>';
+
+            let qs = [];
+            if (isMock) {
+                try {
+                    const mock = await getMockExam(examId);
+                    qs = (mock && mock.questions) || [];
+                } catch (e) { qs = []; }
+            } else {
+                qs = await getExamQuestions(examId);
+            }
+
+            cell.innerHTML = qs.length
+                ? qs.map((q, i) => `
+                    <div style="padding:0.55rem 0.7rem;border-radius:6px;margin-top:0.35rem;font-size:0.82rem;border:1px solid var(--border-md);background:var(--bg-card);">
+                        <strong style="color:var(--text-heading);">Q${i+1}: ${q.text}</strong>
+                        <div style="color:var(--text-muted);margin-top:0.25rem;">${(q.options || []).map(o => `• ${o}`).join(' &nbsp; ')}</div>
+                        ${q.correctAnswer ? `<div style="color:var(--accent);margin-top:0.25rem;font-weight:600;">Ans: ${q.correctAnswer}</div>` : ''}
+                    </div>`).join('')
+                : '<p style="font-size:0.8rem;color:var(--text-muted);">No questions found.</p>';
+        };
+
+        
+        auth.onAuthStateChanged(user => {
+            if (user) loadProfile();
+        });
+    </script>
+    <script type="module" src="../../js/nav.js"></script>
+
+    <footer class="site-footer">&copy; 2026 Exatopia Team. All rights reserved.</footer>
+</body>
+</html>

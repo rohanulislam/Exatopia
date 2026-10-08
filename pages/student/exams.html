@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exams | Exatopia</title>
+    <link rel="stylesheet" href="../../assets/css/main.css">
+    <style>
+        .join-card {
+            background: linear-gradient(145deg, var(--bg-card) 0%, rgba(30,16,8,0.95) 100%);
+            border: 1px solid var(--border-md);
+            border-radius: var(--radius-xl);
+            padding: 2rem;
+            margin-bottom: 2.5rem;
+            box-shadow: var(--shadow-md);
+            position: relative;
+            overflow: hidden;
+        }
+        .join-card::before {
+            content: "";
+            position: absolute; top:0; left:0; right:0; height:3px;
+            background: linear-gradient(90deg, var(--brown-600), var(--brown-300), var(--brown-400));
+        }
+
+        .mock-item-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            box-shadow: var(--shadow-sm);
+            transition: box-shadow 0.2s, border-color 0.2s;
+        }
+        .mock-item-card:hover {
+            box-shadow: var(--shadow-md);
+            border-color: var(--border-md);
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <a href="../../index.html" class="logo" style="text-decoration:none;"><span class="logo-e">E</span>Xatopia</a>
+        <button id="menuToggle" class="menu-toggle" aria-label="Menu">☰</button>
+        <div class="nav-links" id="navLinks">
+            <a href="../../index.html">Home</a>
+            <a href="../../pages/student/profile.html">Examinee Profile</a>
+            <a href="../../pages/teacher/profile.html">Examiner Profile</a>
+            <a href="../../pages/student/dashboard.html">Dashboard</a>
+            <a href="../../pages/student/exams.html">Exams</a>
+            <a href="../../pages/teacher/create-exam.html">Set Exam</a>
+            <a href="../../pages/student/viva.html">Viva</a>
+            <a href="../../pages/admin/dashboard.html">Dashboard</a>
+            <a href="../../pages/login.html">Sign In</a>
+            <a href="../../pages/register.html">Register</a>
+            <button id="logoutBtn" class="btn btn-danger" style="border:none; margin-left:0.5rem;">Logout</button>
+        </div>
+    </nav>
+
+    <main class="page-section">
+        <div style="margin-bottom: 2rem;">
+            <h2 style="font-size: 1.5rem; margin-bottom: 0.3rem;">Exams</h2>
+            <p style="color: var(--text-muted); font-size: 0.9rem;">Join a formal exam by code, or retake your Practice Exams below.</p>
+        </div>
+
+        
+        <div class="join-card">
+            <h3 style="margin-bottom: 0.4rem;">Join an Exam</h3>
+            <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1.25rem;">Exams are private. Ask your teacher for the exam code to enter.</p>
+            <form id="joinForm" style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                <input type="text" id="examCode" placeholder="Enter Exam Code (e.g., EX-1234)" required style="flex: 1; min-width: 220px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;">
+                <button type="submit" class="btn btn-primary" style="cursor: pointer; padding: 0.75rem 1.75rem;">Join Exam</button>
+            </form>
+        </div>
+
+        
+        <div style="margin-bottom: 2.5rem;">
+            <h3 style="margin-bottom: 1rem;">Exams I Created</h3>
+            <div id="myCreatedExamsList" style="color: var(--text-muted);">
+                <p>Loading your exams…</p>
+            </div>
+        </div>
+
+        
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+            <h3 style="margin: 0;">My Practice Exams</h3>
+            <a href="mock-exam.html" class="btn btn-primary" style="font-size: 0.82rem; padding: 0.45rem 1rem;">+ New Practice Exam</a>
+        </div>
+
+        <div id="mockExamsList" style="margin-top: 1rem; color: var(--text-muted);">
+            <p>Loading practice exams…</p>
+        </div>
+    </main>
+
+    <script type="module">
+        import { protectRoute } from "../../js/guard.js";
+        import { auth, db } from "../../js/firebase-config.js";
+        import { getStudentMockExams, getMyCreatedExamsWithStats, getExamScheduleStatus } from "../../js/exam.js";
+        import { collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        protectRoute(["student"]);
+
+        document.getElementById("joinForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const codeInput = document.getElementById("examCode").value.trim().toUpperCase();
+
+            try {
+                const q = query(collection(db, "exams"), where("code", "==", codeInput));
+                const querySnapshot = await getDocs(q);
+
+                if (querySnapshot.empty) {
+                    alert("Invalid exam code. Please verify with your teacher.");
+                    return;
+                }
+
+                let examId = null;
+                querySnapshot.forEach((doc) => { examId = doc.id; });
+
+                window.location.href = `exam-room.html?examId=${examId}&code=${encodeURIComponent(codeInput)}`;
+            } catch (err) {
+                alert("Error finding exam: " + err.message);
+            }
+        });
+
+        auth.onAuthStateChanged(async (user) => {
+            if (!user) return;
+
+            
+            try {
+                const createdEl = document.getElementById("myCreatedExamsList");
+                const created = await getMyCreatedExamsWithStats();
+                if (!created || created.length === 0) {
+                    createdEl.innerHTML = `<p style="color: var(--text-muted);">You haven't created any exams yet. Use "Set Exam" to create one.</p>`;
+                } else {
+                    const statusColors = {
+                        "Running":     { bg: "rgba(21,128,61,0.2)",  color: "#4ade80", border: "rgba(74,222,128,0.35)" },
+                        "Ended":       { bg: "rgba(185,28,28,0.18)", color: "#f87171", border: "rgba(248,113,113,0.35)" },
+                        "Yet to start":{ bg: "rgba(180,83,9,0.2)",   color: "#fbbf24", border: "rgba(251,191,36,0.35)" },
+                        "Scheduled":   { bg: "var(--bg-inset)",      color: "var(--text-muted)", border: "var(--border-md)" }
+                    };
+                    createdEl.innerHTML = `
+                        <div style="display: grid; gap: 1rem; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));">
+                            ${created.map(ex => {
+                                const st = getExamScheduleStatus(ex);
+                                const c = statusColors[st] || statusColors["Scheduled"];
+                                return `
+                                <div class="mock-item-card">
+                                    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:0.5rem;">
+                                        <h4 style="margin-bottom: 0.4rem; color: var(--text-heading); font-size: 1rem;">${ex.title}</h4>
+                                        <span style="background:${c.bg}; color:${c.color}; border:1px solid ${c.border}; padding:0.15rem 0.55rem; border-radius:999px; font-size:0.72rem; font-weight:700; white-space:nowrap;">${st}</span>
+                                    </div>
+                                    <p style="color: var(--text-muted); font-size: 0.8rem; margin-bottom: 0.5rem;">Code: <strong style="color:var(--brown-200);">${ex.code}</strong> &nbsp;·&nbsp; Questions: ${ex.questionCount}</p>
+                                    <p style="color: var(--text-muted); font-size: 0.8rem;">👥 Submissions: ${ex.submissions} &nbsp;·&nbsp; 📊 Avg score: <strong>${ex.avgScore === null ? '—' : ex.avgScore + '%'}</strong></p>
+                                    <div style="margin-top:0.75rem;">
+                                        <a href="../teacher/edit-exam.html?examId=${ex.id}" class="btn btn-secondary" style="font-size: 0.8rem; padding: 0.4rem 0.9rem;">✏️ Edit Timing &amp; Questions</a>
+                                    </div>
+                                </div>`;
+                            }).join('')}
+                        </div>`;
+                }
+            } catch (e) {
+                console.warn("Could not load created exams:", e);
+                document.getElementById("myCreatedExamsList").innerHTML = `<p style="color: var(--text-muted);">Could not load your exams.</p>`;
+            }
+
+            try {
+                const mockExams = await getStudentMockExams();
+                const mockExamsEl = document.getElementById("mockExamsList");
+
+                if (!mockExams || mockExams.length === 0) {
+                    mockExamsEl.innerHTML = `
+                        <div class="empty-state" style="background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-lg); padding:3rem 1.5rem;">
+                            <div class="icon">🧪</div>
+                            No practice exams generated yet. Click "+ New Practice Exam" above to create one!
+                        </div>`;
+                } else {
+                    mockExamsEl.innerHTML = `
+                        <div style="display: grid; gap: 1rem; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));">
+                            ${mockExams.map((mock, idx) => {
+                                const qCount = mock.numQuestions || (mock.questions ? mock.questions.length : 0);
+                                const qHtml = (mock.questions && mock.questions.length > 0)
+                                    ? mock.questions.map((q, qIdx) => `
+                                        <div style="background: var(--bg-inset); padding: 0.65rem 0.85rem; border-radius: var(--radius-md); margin-top: 0.4rem; font-size: 0.82rem; border: 1px solid var(--border);">
+                                            <strong style="color: var(--text-heading);">Q${qIdx + 1}: ${q.text}</strong>
+                                            <div style="color: #34d399; margin-top: 0.25rem; font-weight:600;">✓ Ans: ${q.correctAnswer}</div>
+                                            ${q.explanation ? `<div style="color: var(--text-muted); font-size: 0.78rem; margin-top: 0.2rem;">${q.explanation}</div>` : ''}
+                                        </div>
+                                    `).join('')
+                                    : `<p style="font-size: 0.8rem; color: var(--text-muted);">Questions stored in practice record.</p>`;
+
+                                return `
+                                    <div class="mock-item-card">
+                                        <h4 style="margin-bottom: 0.4rem; color: var(--text-heading); font-size: 1rem;">${mock.title || 'Practice Exam'}</h4>
+                                        <p style="color: var(--text-muted); font-size: 0.8rem; margin-bottom: 1rem;">Questions: ${qCount} &nbsp;·&nbsp; Time: ${mock.timeLimit} mins</p>
+                                        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                            <a href="mock-exam-room.html?mockId=${mock.id}" class="btn btn-primary" style="font-size: 0.8rem; padding: 0.4rem 0.9rem;">Retake Exam</a>
+                                            <button type="button" class="btn btn-secondary" style="font-size: 0.8rem; padding: 0.4rem 0.9rem;" onclick="const el = document.getElementById('mock_q_${idx}'); el.style.display = el.style.display === 'none' ? 'block' : 'none';">Questions (${qCount})</button>
+                                        </div>
+                                        <div id="mock_q_${idx}" style="display: none; margin-top: 1rem; max-height: 240px; overflow-y: auto;">${qHtml}</div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    `;
+                }
+            } catch (e) {
+                console.warn("Could not load practice exams:", e);
+                document.getElementById("mockExamsList").innerHTML = `<p style="color: var(--text-muted);">No practice exams generated yet.</p>`;
+            }
+        });
+    </script>
+    <script type="module" src="../../js/nav.js"></script>
+
+    <footer class="site-footer">&copy; 2026 Exatopia Team. All rights reserved.</footer>
+</body>
+</html>

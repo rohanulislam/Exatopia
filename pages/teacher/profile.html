@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Examiner Profile | Exatopia</title>
+    <link rel="stylesheet" href="../../assets/css/main.css">
+    <style>
+        .profile-container { max-width: 900px; margin: 0 auto; padding: 2.25rem 1.75rem; width: 100%; }
+        .profile-card {
+            background: linear-gradient(145deg, var(--bg-card) 0%, rgba(30,16,8,0.95) 100%);
+            border: 1px solid var(--border-md);
+            border-radius: var(--radius-xl);
+            padding: 2.25rem;
+            margin-bottom: 1.75rem;
+            box-shadow: var(--shadow-md), var(--shadow-glow);
+            position: relative; overflow: hidden;
+        }
+        .profile-card::before {
+            content: "";
+            position: absolute; top:0; left:0; right:0; height:3px;
+            background: linear-gradient(90deg, var(--brown-600), var(--brown-300), var(--brown-400));
+        }
+
+        .profile-header { display: flex; align-items: center; gap: 1.75rem; flex-wrap: nowrap; }
+        .profile-header .profile-info { min-width: 0; }
+        .profile-header .header-stats { flex-shrink: 0; margin-left: auto; }
+        .avatar-wrap { position: relative; cursor: pointer; flex-shrink: 0; }
+        .avatar {
+            width: 100px; height: 100px; border-radius: 50%; object-fit: cover;
+            border: 3px solid var(--brown-400); background: var(--bg-inset);
+            box-shadow: 0 0 0 5px rgba(160,98,42,0.15), var(--shadow-md);
+        }
+        .avatar-overlay {
+            position: absolute; inset: 0; border-radius: 50%;
+            background: rgba(26,15,8,0.75); display: flex; align-items: center; justify-content: center;
+            opacity: 0; transition: opacity 0.2s; font-size: 0.72rem; color: var(--brown-100);
+            text-align: center; padding: 4px; font-weight: 600;
+        }
+        .avatar-wrap:hover .avatar-overlay { opacity: 1; }
+
+        .role-badge {
+            display: inline-flex; align-items: center;
+            background: rgba(160,98,42,0.15); color: var(--brown-300); border: 1px solid rgba(200,133,74,0.3);
+            padding: 0.2rem 0.75rem; border-radius: 999px; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;
+        }
+        .stat-box {
+            background: var(--bg-inset); border-radius: var(--radius-lg); border: 1px solid var(--border-md);
+            padding: 1.25rem 1.5rem; text-align: center; box-shadow: var(--shadow-sm);
+        }
+        .stat-num { font-size: 2rem; font-weight: 900; color: var(--brown-200); }
+        .section-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 1.25rem; color: var(--brown-200); display: flex; align-items: center; gap: 0.5rem; }
+        .chart-legend { display: flex; flex-direction: column; gap: 0.5rem; flex: 1; min-width: 160px; }
+        .legend-item { display: flex; align-items: center; gap: 0.5rem; font-size: 0.84rem; color: var(--text-main); }
+        .legend-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+
+        .tab-btns { display: flex; gap: 0.25rem; margin-bottom: 1.75rem; border-bottom: 1px solid var(--border); overflow-x: auto; }
+        .tab-btn { background: none; border: none; color: var(--text-muted); padding: 0.65rem 1.2rem; cursor: pointer; font-size: 0.9rem; font-weight: 600; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: color 0.2s, border-color 0.2s; font-family: inherit; }
+        .tab-btn:hover { color: var(--brown-200); }
+        .tab-btn.active { color: var(--brown-100); border-bottom-color: var(--accent); }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        .modal-overlay { position: fixed; inset: 0; background: rgba(15,8,3,0.85); backdrop-filter: blur(6px); display: none; align-items: center; justify-content: center; z-index: 1000; }
+        .modal-overlay.open { display: flex; }
+        .modal-box { background: var(--bg-card); border: 1px solid var(--border-md); border-radius: var(--radius-lg); padding: 2rem; width: 100%; max-width: 420px; box-shadow: var(--shadow-lg); }
+    </style>
+</head>
+<body>
+    
+    <nav class="navbar">
+        <a href="../../index.html" class="logo" style="text-decoration:none;"><span class="logo-e">E</span>Xatopia</a>
+        <button id="menuToggle" class="menu-toggle" aria-label="Menu">☰</button>
+        <div class="nav-links" id="navLinks">
+            <a href="../../index.html">Home</a>
+            <a href="../../pages/student/profile.html">Examinee Profile</a>
+            <a href="../../pages/teacher/profile.html">Examiner Profile</a>
+            <a href="../../pages/student/dashboard.html">Dashboard</a>
+            <a href="../../pages/student/exams.html">Exams</a>
+            <a href="../../pages/teacher/create-exam.html">Set Exam</a>
+            <a href="../../pages/student/viva.html">Viva</a>
+            <a href="../../pages/admin/dashboard.html">Dashboard</a>
+            <a href="../../pages/login.html">Sign In</a>
+            <a href="../../pages/register.html">Register</a>
+            <button id="logoutBtn" class="btn" style="background:#dc2626; color:white; border:none; cursor:pointer; margin-left:1rem;">Logout</button>
+        </div>
+    </nav>
+
+    
+    <div class="modal-overlay" id="pwdModal">
+        <div class="modal-box">
+            <h3 style="margin-bottom:1rem;">🔒 Confirm Your Password</h3>
+            <p style="color:var(--text-muted);font-size:0.88rem;margin-bottom:1rem;">For security, please enter your current password to save changes.</p>
+            <input type="password" id="confirmPwdInput" class="form-input" placeholder="Current password" style="margin-bottom:1rem;">
+            <p id="pwdModalError" style="color:#ef4444;font-size:0.82rem;margin-bottom:0.75rem;min-height:1.1rem;"></p>
+            <div style="display:flex;gap:0.75rem;">
+                <button id="pwdModalConfirmBtn" class="btn btn-primary" style="padding:0.45rem 1rem;font-size:0.85rem;cursor:pointer;">Confirm & Save</button>
+                <button id="pwdModalCancelBtn" class="btn" style="background:var(--bg-inset);color:var(--text-main);border:1px solid var(--border-md);padding:0.45rem 1rem;font-size:0.85rem;cursor:pointer;">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <main class="profile-container">
+        
+        <div class="profile-card">
+            <div class="profile-header">
+                <div class="avatar-wrap" id="avatarWrap" title="Click to upload photo">
+                    <img src="" alt="Profile" class="avatar" id="avatarImg">
+                    <div class="avatar-overlay">📷 Change<br>Photo</div>
+                    <input type="file" id="photoInput" accept="image/*" style="display:none;">
+                </div>
+                <div class="profile-info" style="flex:1;">
+                    <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
+                        <h2 id="profileName">Loading...</h2>
+                        <span class="role-badge">Examiner</span>
+                    </div>
+                    <p style="color:var(--text-muted);font-size:0.9rem;margin:0.3rem 0;">📧 <span id="profileEmail">—</span></p>
+                    <p style="color:var(--text-muted);font-size:0.9rem;">🏛 <span id="profileInstitution">—</span></p>
+                </div>
+                <div class="header-stats" style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;min-width:200px;">
+                    <div class="stat-box">
+                        <div class="stat-num" id="statExams">0</div>
+                        <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.25rem;text-transform:uppercase;letter-spacing:0.04em;font-weight:600;">Exams Created</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-num" id="statStudents">0</div>
+                        <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.25rem;text-transform:uppercase;letter-spacing:0.04em;font-weight:600;">Submissions</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        
+        <div class="tab-btns">
+            <button class="tab-btn active" data-tab="overview">📊 Student Analytics</button>
+            <button class="tab-btn" data-tab="history">📋 History</button>
+            <button class="tab-btn" data-tab="edit">✏️ Edit Profile</button>
+            <button class="tab-btn" data-tab="security">🔐 Security</button>
+        </div>
+
+        
+        <div class="tab-content active" id="tab-overview">
+            <div class="profile-card">
+                <div class="section-title">📈 Student Grade Distribution (All Exams)</div>
+                <div style="display:flex;gap:2rem;align-items:center;flex-wrap:wrap;">
+                    <canvas id="gradeChart" width="220" height="220" style="width:220px;height:220px;flex-shrink:0;"></canvas>
+                    <div class="chart-legend" id="chartLegend"></div>
+                </div>
+                <p id="noStatsMsg" style="color:var(--text-muted);font-size:0.9rem;display:none;margin-top:1rem;">No student submissions yet. Create exams and have students attempt them to see analytics.</p>
+
+                <div style="margin-top:1.5rem;padding-top:1.5rem;border-top:1px solid var(--border-md);">
+                    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:1rem;">
+                        <div class="stat-box">
+                            <div class="stat-num" id="statAvgPct">—</div>
+                            <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.25rem;text-transform:uppercase;letter-spacing:0.04em;font-weight:600;">Class Avg Score</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-num" id="statAvgGrade">—</div>
+                            <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.25rem;text-transform:uppercase;letter-spacing:0.04em;font-weight:600;">Class Avg Grade</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        
+        <div class="tab-content" id="tab-history">
+            <div class="profile-card">
+                <div class="section-title">Exams I Created</div>
+                <div id="createdExamsList" style="color: var(--text-muted); font-size: 0.88rem;">
+                    <p>Loading...</p>
+                </div>
+            </div>
+            <div class="profile-card">
+                <div class="section-title">📋 Exams I Participated In</div>
+                <div id="participatedExamsList" style="color: var(--text-muted); font-size: 0.88rem;">
+                    <p>Loading...</p>
+                </div>
+            </div>
+        </div>
+
+        
+        <div class="tab-content" id="tab-edit">
+            <div class="profile-card">
+                <div class="section-title">✏️ Edit Profile Information</div>
+                <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:1.25rem;">⚠️ You will be asked to confirm your current password before saving.</p>
+                <form id="editProfileForm">
+                    <div style="margin-bottom:1rem;">
+                        <label style="font-size:0.8rem;color:var(--text-muted);">Full Name</label>
+                        <input type="text" id="editName" class="form-input" required>
+                    </div>
+                    <div style="margin-bottom:1.5rem;">
+                        <label style="font-size:0.8rem;color:var(--text-muted);">Institution / University</label>
+                        <input type="text" id="editInstitution" class="form-input" placeholder="e.g. MIT, Harvard...">
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="cursor:pointer;">Save Changes</button>
+                    <p id="editStatus" style="margin-top:0.75rem;font-size:0.85rem;"></p>
+                </form>
+            </div>
+        </div>
+
+        
+        <div class="tab-content" id="tab-security">
+            <div class="profile-card">
+                <div class="section-title">🔐 Security Settings</div>
+                <div style="margin-bottom:2rem;">
+                    <h4 style="margin-bottom:0.5rem;">Forgot Password (OTP Verification)</h4>
+                    <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:0.75rem;">We'll send a 6-digit code to <strong id="fpEmailDisplay">—</strong>. Verify it to receive your password reset link.</p>
+                    <button type="button" id="fpSendOtpBtn" class="btn" style="background:#1e3a8a;color:#93c5fd;border:1px solid #3b82f6;cursor:pointer;">Send Reset Code</button>
+                    <div id="fpOtpWrap" style="display:none;margin-top:1rem;">
+                        <input type="text" id="fpOtpInput" class="form-input" maxlength="6" placeholder="Enter 6-digit OTP" style="margin-bottom:0.75rem;">
+                        <div style="display:flex;gap:0.5rem;">
+                            <button type="button" id="fpVerifyOtpBtn" class="btn btn-primary" style="cursor:pointer;">Verify & Send Reset Link</button>
+                            <button type="button" id="fpResendOtpBtn" class="btn" style="cursor:pointer;">🔁 Resend</button>
+                        </div>
+                    </div>
+                    <p id="fpStatus" style="font-size:0.82rem;margin-top:0.5rem;min-height:1rem;"></p>
+                </div>
+
+                <div>
+                    <h4 style="margin-bottom:0.5rem;">Change Password</h4>
+                    <form id="changePwdForm">
+                        <div style="margin-bottom:0.75rem;">
+                            <label style="font-size:0.8rem;color:var(--text-muted);">Current Password</label>
+                            <input type="password" id="currentPwd" class="form-input" required>
+                        </div>
+                        <div style="margin-bottom:0.75rem;">
+                            <label style="font-size:0.8rem;color:var(--text-muted);">New Password</label>
+                            <input type="password" id="newPwd" class="form-input" required minlength="6">
+                        </div>
+                        <div style="margin-bottom:1rem;">
+                            <label style="font-size:0.8rem;color:var(--text-muted);">Confirm New Password</label>
+                            <input type="password" id="confirmPwd" class="form-input" required minlength="6">
+                        </div>
+                        <button type="submit" class="btn btn-primary" style="cursor:pointer;">Update Password</button>
+                        <p id="pwdStatus" style="margin-top:0.75rem;font-size:0.85rem;"></p>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script type="module">
+        import { protectRoute } from "../../js/guard.js";
+        import { auth } from "../../js/firebase-config.js";
+        import { logoutUser, getUserProfile, updateUserProfile, changeUserPassword, sendPasswordReset } from "../../js/auth.js";
+        import { getTeacherProfileStats, getStudentExamHistory, getMyCreatedExamsWithStats, getExamScheduleStatus } from "../../js/exam.js";
+        import { showToast, drawPieChart, compressImage } from "../../js/ui-utils.js";
+
+        protectRoute(["teacher"]);
+
+        
+        document.querySelectorAll(".tab-btn").forEach(btn => {
+            btn.addEventListener("click", () => {
+                document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+                document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
+                btn.classList.add("active");
+                document.getElementById("tab-" + btn.dataset.tab).classList.add("active");
+            });
+        });
+
+        
+        function openPwdModal(onConfirm) {
+            document.getElementById("confirmPwdInput").value = "";
+            document.getElementById("pwdModalError").textContent = "";
+            document.getElementById("pwdModal").classList.add("open");
+            const confirmBtn = document.getElementById("pwdModalConfirmBtn");
+            const cancelBtn = document.getElementById("pwdModalCancelBtn");
+            const newConfirm = confirmBtn.cloneNode(true);
+            confirmBtn.parentNode.replaceChild(newConfirm, confirmBtn);
+            const newCancel = cancelBtn.cloneNode(true);
+            cancelBtn.parentNode.replaceChild(newCancel, cancelBtn);
+            document.getElementById("pwdModalConfirmBtn").addEventListener("click", async () => {
+                const pwd = document.getElementById("confirmPwdInput").value;
+                if (!pwd) { document.getElementById("pwdModalError").textContent = "Please enter your password."; return; }
+                document.getElementById("pwdModal").classList.remove("open");
+                onConfirm(pwd);
+            });
+            document.getElementById("pwdModalCancelBtn").addEventListener("click", () => {
+                document.getElementById("pwdModal").classList.remove("open");
+            });
+        }
+
+        async function loadHistory() {
+            const createdEl = document.getElementById("createdExamsList");
+            const participatedEl = document.getElementById("participatedExamsList");
+
+            
+            try {
+                const created = await getMyCreatedExamsWithStats();
+                if (!created || created.length === 0) {
+                    createdEl.innerHTML = `<p style="color:var(--text-muted);">You haven't created any exams yet.</p>`;
+                } else {
+                    const statusColors = {
+                        "Running":     { bg: "rgba(21,128,61,0.2)",  color: "#4ade80", border: "rgba(74,222,128,0.35)" },
+                        "Ended":       { bg: "rgba(185,28,28,0.18)", color: "#f87171", border: "rgba(248,113,113,0.35)" },
+                        "Yet to start":{ bg: "rgba(180,83,9,0.2)",   color: "#fbbf24", border: "rgba(251,191,36,0.35)" },
+                        "Scheduled":   { bg: "var(--bg-inset)",      color: "var(--text-muted)", border: "var(--border-md)" }
+                    };
+                    createdEl.innerHTML = created.map(ex => {
+                        const st = getExamScheduleStatus(ex);
+                        const c = statusColors[st] || statusColors["Scheduled"];
+                        return `
+                        <div style="display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap; background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-lg); padding:1rem 1.25rem; margin-bottom:0.75rem;">
+                            <div>
+                                <div style="font-weight:700; color:var(--text-heading);">${ex.title}</div>
+                                <div style="color:var(--text-muted); font-size:0.78rem; margin-top:0.25rem;">🔑 ${ex.code} &nbsp;·&nbsp; ❓ ${ex.questionCount} questions &nbsp;·&nbsp; <span style="background:${c.bg}; color:${c.color}; border:1px solid ${c.border}; padding:0.1rem 0.5rem; border-radius:999px; font-size:0.7rem; font-weight:700;">${st}</span></div>
+                            </div>
+                            <div style="text-align:right;">
+                                <div style="font-size:1.1rem; font-weight:800; color:var(--brown-200);">${ex.avgScore === null ? '—' : ex.avgScore + '%'}</div>
+                                <div style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase;">Avg · ${ex.submissions} submissions</div>
+                                <a href="edit-exam.html?examId=${ex.id}" class="btn btn-secondary" style="font-size:0.75rem; padding:0.3rem 0.8rem; display:inline-block; margin-top:0.4rem;">✏️ Edit</a>
+                            </div>
+                        </div>`;
+                    }).join('');
+                }
+            } catch (e) {
+                createdEl.innerHTML = `<p style="color:var(--text-muted);">Could not load created exams.</p>`;
+            }
+
+            
+            try {
+                const history = await getStudentExamHistory();
+                if (!history || history.length === 0) {
+                    participatedEl.innerHTML = `<p style="color:var(--text-muted);">You haven't participated in any exams yet.</p>`;
+                } else {
+                    participatedEl.innerHTML = history.map(item => {
+                        const dateStr = item.submittedAt
+                            ? (item.submittedAt.toDate ? item.submittedAt.toDate().toLocaleDateString() : new Date(item.submittedAt).toLocaleDateString())
+                            : "—";
+                        return `
+                        <div style="display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap; background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-lg); padding:1rem 1.25rem; margin-bottom:0.75rem;">
+                            <div>
+                                <div style="font-weight:700; color:var(--text-heading);">${item.examTitle}</div>
+                                <div style="color:var(--text-muted); font-size:0.78rem; margin-top:0.25rem;">${item.isViva ? '🎤 Viva' : item.isMock ? '🧪 Practice' : '📝 Formal'} &nbsp;·&nbsp; ${dateStr}</div>
+                            </div>
+                            <div style="text-align:right;">
+                                <div style="font-size:1.1rem; font-weight:800; color:var(--brown-200);">${item.score} / ${item.total} <span style="font-size:0.8rem; color:var(--text-muted);">(${item.percentage}%)</span></div>
+                                <div style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase;">Grade ${item.grade}</div>
+                            </div>
+                        </div>`;
+                    }).join('');
+                }
+            } catch (e) {
+                participatedEl.innerHTML = `<p style="color:var(--text-muted);">Could not load participation history.</p>`;
+            }
+        }
+
+        async function loadProfile() {
+            const user = auth.currentUser;
+            if (!user) return;
+            const profile = await getUserProfile(user.uid);
+
+            const photoURL = profile?.photoURL || user.photoURL || "";
+            const avatarEl = document.getElementById("avatarImg");
+            avatarEl.src = photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile?.name || user.email)}&background=059669&color=fff&size=96`;
+            document.getElementById("profileName").textContent = profile?.name || user.displayName || user.email;
+            document.getElementById("profileEmail").textContent = user.email;
+            document.getElementById("profileInstitution").textContent = profile?.institution || "Not specified";
+            document.getElementById("editName").value = profile?.name || user.displayName || "";
+            document.getElementById("editInstitution").value = profile?.institution || "";
+
+            
+            const stats = await getTeacherProfileStats();
+            document.getElementById("statExams").textContent = stats.totalExams;
+            document.getElementById("statStudents").textContent = stats.totalSubmissions;
+            document.getElementById("statAvgPct").textContent = stats.avgPercentage + "%";
+            document.getElementById("statAvgGrade").textContent = stats.avgGrade.grade;
+
+            if (stats.totalSubmissions > 0) {
+                drawPieChart(document.getElementById("gradeChart"), stats.gradeDistribution);
+                const legendEl = document.getElementById("chartLegend");
+                legendEl.innerHTML = stats.gradeDistribution.map(g => `
+                    <div class="legend-item">
+                        <div class="legend-dot" style="background:${g.color};"></div>
+                        <span style="color:#cbd5e1;">${g.label}: <strong>${g.count}</strong> (${g.percentage}%)</span>
+                    </div>
+                `).join("");
+            } else {
+                document.getElementById("noStatsMsg").style.display = "block";
+            }
+        }
+
+        
+        document.getElementById("avatarWrap").addEventListener("click", () => document.getElementById("photoInput").click());
+        document.getElementById("photoInput").addEventListener("change", async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            try {
+                const compressed = await compressImage(file, 300, 0.85);
+                openPwdModal(async (pwd) => {
+                    try {
+                        await updateUserProfile(pwd, { photoURL: compressed });
+                        document.getElementById("avatarImg").src = compressed;
+                        showToast("Photo updated!", "success");
+                    } catch (err) { showToast("Error: " + err.message, "error"); }
+                });
+            } catch (err) { showToast("Image error: " + err.message, "error"); }
+        });
+
+        
+        document.getElementById("editProfileForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const name = document.getElementById("editName").value.trim();
+            const institution = document.getElementById("editInstitution").value.trim();
+            if (!name) { showToast("Name cannot be empty.", "error"); return; }
+            openPwdModal(async (pwd) => {
+                const s = document.getElementById("editStatus");
+                s.style.color = "#a5b4fc"; s.textContent = "Saving...";
+                try {
+                    await updateUserProfile(pwd, { name, institution });
+                    document.getElementById("profileName").textContent = name;
+                    document.getElementById("profileInstitution").textContent = institution || "Not specified";
+                    s.style.color = "#22c55e"; s.textContent = "✓ Saved!";
+                    showToast("Profile updated!", "success");
+                } catch (err) { s.style.color = "#ef4444"; s.textContent = "Error: " + err.message; }
+            });
+        });
+
+        
+        const OTP_TTL_MS = 120000;
+        let forgotOtp = null, forgotOtpExpiresAt = 0;
+        const fpSendBtn = document.getElementById("fpSendOtpBtn");
+        const fpVerifyBtn = document.getElementById("fpVerifyOtpBtn");
+        const fpResendBtn = document.getElementById("fpResendOtpBtn");
+        const fpEmailDisplay = document.getElementById("fpEmailDisplay");
+
+        fpEmailDisplay.textContent = auth.currentUser?.email || "your account email";
+
+        fpSendBtn.addEventListener("click", async () => {
+            const email = auth.currentUser?.email;
+            const statusEl = document.getElementById("fpStatus");
+            if (!email) { statusEl.textContent = "Not signed in."; return; }
+            fpEmailDisplay.textContent = email;
+            forgotOtp = String(Math.floor(100000 + Math.random() * 900000));
+            forgotOtpExpiresAt = Date.now() + OTP_TTL_MS;
+            console.log("[Forgot pwd] OTP for", email, ":", forgotOtp);
+            statusEl.style.color = "#a5b4fc";
+            statusEl.textContent = "Sending OTP...";
+            const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+            const endpoints = [];
+            if (isLocal && window.location.port !== "3000") {
+                endpoints.push("http://localhost:3000/api/send-otp");
+            }
+            endpoints.push("/api/send-otp");
+            if (isLocal) {
+                endpoints.push("http://localhost:3000/api/send-otp");
+            }
+            endpoints.push("../../api/send-otp.php");
+            let sent = false;
+            for (const url of endpoints) {
+                try {
+                    const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, otp: forgotOtp }) });
+                    const d = await r.json().catch(() => null);
+                    if (d && d.status === "success") { sent = true; break; }
+                } catch (e) { console.warn("OTP endpoint failed:", url, e.message); }
+            }
+            document.getElementById("fpOtpWrap").style.display = "block";
+            statusEl.style.color = sent ? "#22c55e" : "#f59e0b";
+            statusEl.textContent = sent ? "✓ OTP sent to your email. Expires in 2 minutes." : "Email delivery unavailable. Code is in the browser console.";
+        });
+
+        fpResendBtn.addEventListener("click", () => fpSendBtn.click());
+
+        fpVerifyBtn.addEventListener("click", async () => {
+            const statusEl = document.getElementById("fpStatus");
+            const code = document.getElementById("fpOtpInput").value.trim();
+            statusEl.style.color = "#ef4444";
+            if (!forgotOtp) { statusEl.textContent = "Request a code first."; return; }
+            if (Date.now() > forgotOtpExpiresAt) { statusEl.textContent = "OTP expired. Please resend."; return; }
+            if (code !== forgotOtp) { statusEl.textContent = "Incorrect OTP."; return; }
+            try {
+                await sendPasswordReset(auth.currentUser?.email);
+                forgotOtp = null;
+                document.getElementById("fpOtpWrap").style.display = "none";
+                statusEl.style.color = "#22c55e";
+                statusEl.textContent = "✓ Email verified. A password reset link has been sent to your email.";
+                showToast("Reset link sent!", "success");
+            } catch (err) {
+                statusEl.textContent = "Error: " + err.message;
+            }
+        });
+
+        
+        document.getElementById("changePwdForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const currentPwd = document.getElementById("currentPwd").value;
+            const newPwd = document.getElementById("newPwd").value;
+            const confirmPwd = document.getElementById("confirmPwd").value;
+            const s = document.getElementById("pwdStatus");
+            if (newPwd !== confirmPwd) { s.style.color = "#ef4444"; s.textContent = "Passwords do not match."; return; }
+            s.style.color = "#a5b4fc"; s.textContent = "Updating...";
+            try {
+                await changeUserPassword(currentPwd, newPwd);
+                s.style.color = "#22c55e"; s.textContent = "✓ Password changed!";
+                document.getElementById("changePwdForm").reset();
+                showToast("Password updated!", "success");
+            } catch (err) { s.style.color = "#ef4444"; s.textContent = "Error: " + err.message; }
+        });
+
+        auth.onAuthStateChanged(user => { if (user) { loadProfile(); loadHistory(); } });
+    </script>
+    <script type="module" src="../../js/nav.js"></script>
+
+    <footer class="site-footer">&copy; 2026 Exatopia Team. All rights reserved.</footer>
+</body>
+</html>
