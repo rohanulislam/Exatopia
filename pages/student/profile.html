@@ -318,7 +318,7 @@
             document.getElementById("profileName").textContent = profile?.name || user.displayName || user.email;
             document.getElementById("profileEmail").textContent = user.email;
             document.getElementById("profileInstitution").textContent = profile?.institution || "Not specified";
-            document.getElementById("roleBadge").textContent = (profile?.role || "student") === "student" ? "examinee" : profile.role;
+            document.getElementById("roleBadge").textContent = "Examinee";
 
             
             document.getElementById("editName").value = profile?.name || user.displayName || "";

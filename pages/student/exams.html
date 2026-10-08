@@ -64,7 +64,7 @@
         
         <div class="join-card">
             <h3 style="margin-bottom: 0.4rem;">Join an Exam</h3>
-            <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1.25rem;">Exams are private. Ask your teacher for the exam code to enter.</p>
+            <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1.25rem;">Exams are private. Ask your examiner for the exam code to enter.</p>
             <form id="joinForm" style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
                 <input type="text" id="examCode" placeholder="Enter Exam Code (e.g., EX-1234)" required style="flex: 1; min-width: 220px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;">
                 <button type="submit" class="btn btn-primary" style="cursor: pointer; padding: 0.75rem 1.75rem;">Join Exam</button>
@@ -107,7 +107,7 @@
                 const querySnapshot = await getDocs(q);
 
                 if (querySnapshot.empty) {
-                    alert("Invalid exam code. Please verify with your teacher.");
+                    alert("Invalid exam code. Please verify with your examiner.");
                     return;
                 }
 
