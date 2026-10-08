@@ -23,7 +23,7 @@ export async function createAuthAccount(name, email, password, role, institution
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
         try {
-            await updateProfile(user, { displayName: name });
+            if (name) await updateProfile(user, { displayName: String(name).trim() });
         } catch (pErr) {}
         return { user, role };
     } catch (error) {
