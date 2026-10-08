@@ -162,33 +162,29 @@
         function makeOtp() { return String(Math.floor(100000 + Math.random() * 900000)); }
 
         function sendOtpEmail(email, otp) {
-            const endpoints = [];
             const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
-            if (isLocal && window.location.port !== "3000") {
-                endpoints.push("http://localhost:3000/api/send-otp");
+            let apiUrl = "/api/send-otp";
+
+            // If running on a static dev server like Live Server (port 5500/8080), direct API calls to Node server on port 3000
+            if (isLocal && window.location.port !== "3000" && window.location.port !== "") {
+                apiUrl = "http://localhost:3000/api/send-otp";
             }
-            endpoints.push("/api/send-otp");
-            const uniqueEndpoints = [...new Set(endpoints)];
+
             return new Promise(async (resolve) => {
-                for (const url of uniqueEndpoints) {
-                    try {
-                        const controller = new AbortController();
-                        const timer = setTimeout(() => controller.abort(), 8000);
-                        const mailRes = await fetch(url, {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ email, otp }),
-                            signal: controller.signal
-                        });
-                        clearTimeout(timer);
-                        const mailData = await mailRes.json().catch(() => null);
-                        if (mailData && mailData.status === "success") { resolve(true); return; }
-                    } catch (mailErr) {
-                        if (mailErr.name !== "AbortError") {
-                            console.warn("OTP endpoint failed:", url, mailErr.message);
-                        }
-                    }
-                }
+                try {
+                    const controller = new AbortController();
+                    const timer = setTimeout(() => controller.abort(), 6000);
+                    const mailRes = await fetch(apiUrl, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ email, otp }),
+                        signal: controller.signal
+                    }).catch(() => null);
+                    clearTimeout(timer);
+                    if (!mailRes || !mailRes.ok) { resolve(false); return; }
+                    const mailData = await mailRes.json().catch(() => null);
+                    if (mailData && mailData.status === "success") { resolve(true); return; }
+                } catch (e) {}
                 resolve(false);
             });
         }
