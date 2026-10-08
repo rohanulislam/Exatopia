@@ -153,7 +153,7 @@
     <script type="module">
         import { createAuthAccount, finalizeRegistration } from "../js/auth.js";
         import { auth, db } from "../js/firebase-config.js";
-        import { deleteUser } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { deleteUser, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
         import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const ADMIN_RECOVERY_EMAIL = "abcd2303421@gmail.com";
@@ -175,11 +175,15 @@
             return new Promise(async (resolve) => {
                 for (const url of endpoints) {
                     try {
+                        const controller = new AbortController();
+                        const timer = setTimeout(() => controller.abort(), 6000);
                         const mailRes = await fetch(url, {
                             method: "POST",
                             headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ email, otp })
+                            body: JSON.stringify({ email, otp }),
+                            signal: controller.signal
                         });
+                        clearTimeout(timer);
                         const mailData = await mailRes.json().catch(() => null);
                         if (mailData && mailData.status === "success") { resolve(true); return; }
                     } catch (mailErr) { console.warn("OTP endpoint failed:", url, mailErr.message); }
@@ -194,18 +198,33 @@
         let primaryExpiresAt = 0;
         let isAdminFlow = false;
         let registrationInProgress = false;
+        let registrationFinalized = false;
 
-        auth.onAuthStateChanged(async (u) => {
-            if (u && !pendingUser && !registrationInProgress) {
+        async function cleanupUnverifiedUser() {
+            if (registrationFinalized) return;
+            const u = auth.currentUser;
+            if (u) {
                 try {
                     const snap = await getDoc(doc(db, "users", u.uid));
-                    if (!snap.exists()) { await deleteUser(u); }
+                    if (!snap.exists()) {
+                        await deleteUser(u);
+                        await signOut(auth);
+                    }
                 } catch (e) {}
+            }
+        }
+
+        auth.onAuthStateChanged(async (u) => {
+            if (u && !registrationFinalized && !registrationInProgress) {
+                await cleanupUnverifiedUser();
             }
         });
 
         window.addEventListener("beforeunload", () => {
-            if (pendingUser) { try { const u = auth.currentUser; if (u) deleteUser(u); } catch (e) {} }
+            cleanupUnverifiedUser();
+        });
+        window.addEventListener("pagehide", () => {
+            cleanupUnverifiedUser();
         });
 
         document.getElementById("registerForm").addEventListener("submit", async (e) => {
@@ -226,7 +245,28 @@
                 pendingUser = { name, email, role, institution };
                 registrationInProgress = true;
 
-                const created = await createAuthAccount(name, email, password, role, institution);
+                let created = null;
+                try {
+                    created = await createAuthAccount(name, email, password, role, institution);
+                } catch (authErr) {
+                    if (authErr.code === "auth/email-already-in-use" || (authErr.message && authErr.message.includes("email-already-in-use"))) {
+                        try {
+                            const cred = await signInWithEmailAndPassword(auth, email, password);
+                            const snap = await getDoc(doc(db, "users", cred.user.uid));
+                            if (!snap.exists()) {
+                                await deleteUser(cred.user);
+                                created = await createAuthAccount(name, email, password, role, institution);
+                            } else {
+                                throw new Error("An account with this email already exists. Please sign in.");
+                            }
+                        } catch (cleanErr) {
+                            throw (cleanErr.message && !cleanErr.message.includes("auth/")) ? cleanErr : new Error("An account with this email already exists. Please sign in.");
+                        }
+                    } else {
+                        throw authErr;
+                    }
+                }
+
                 if (created && created.user) pendingUser.uid = created.user.uid;
 
                 primaryOtp = makeOtp();
@@ -298,6 +338,7 @@
 
             try {
                 await finalizeRegistration(pendingUser.name, pendingUser.email, pendingUser.role, pendingUser.institution, pendingUser.uid);
+                registrationFinalized = true;
                 document.getElementById("successBanner").style.display = "none";
                 document.getElementById("otpSuccessBanner").style.display = "block";
                 primaryOtp = null; motherOtp = null; pendingUser = null; registrationInProgress = false;

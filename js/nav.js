@@ -25,12 +25,13 @@ document.addEventListener("DOMContentLoaded", () => {
         const linksWrap = document.getElementById("navLinks");
         if (!linksWrap) return;
 
-        const isLoggedIn = !!user;
+        let isLoggedIn = false;
         let isAdmin = false;
         if (user) {
             try {
                 const snap = await getDoc(doc(db, "users", user.uid));
-                isAdmin = snap.exists() && snap.data().role === "admin";
+                isLoggedIn = snap.exists();
+                isAdmin = isLoggedIn && snap.data().role === "admin";
             } catch (e) {
                 isAdmin = false;
             }

@@ -118,6 +118,9 @@ app.post(['/api/send-otp', '/api/send-otp.php'], async (req, res) => {
         user: gmailUser,
         pass: gmailPass,
       },
+      connectionTimeout: 5000,
+      greetingTimeout: 5000,
+      socketTimeout: 5000
     });
 
     await transporter.sendMail({
