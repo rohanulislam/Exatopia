@@ -105,17 +105,15 @@ app.post(['/api/send-otp', '/api/send-otp.php'], async (req, res) => {
 
   if (!gmailUser || !gmailPass) {
     console.warn('[send-otp] Gmail credentials missing in environment.');
-    return res.status(500).json({
-      status: 'error',
+    return res.json({
+      status: 'warning',
       message: 'Email service not configured. Please set GMAIL_USER and GMAIL_APP_PASSWORD.'
     });
   }
 
   try {
     const transporter = nodemailer.createTransport({
-      host: 'smtp.gmail.com',
-      port: 465,
-      secure: true,
+      service: 'gmail',
       auth: {
         user: gmailUser,
         pass: gmailPass,
@@ -144,8 +142,8 @@ app.post(['/api/send-otp', '/api/send-otp.php'], async (req, res) => {
 
     res.json({ status: 'success', message: 'OTP sent to ' + email });
   } catch (err) {
-    console.error('[send-otp] Mail delivery failed:', err.message);
-    res.status(500).json({ status: 'error', message: 'Failed to send OTP email: ' + err.message });
+    console.warn('[send-otp] Mail delivery skipped:', err.message);
+    res.json({ status: 'warning', message: 'Failed to send OTP email: ' + err.message });
   }
 });
 

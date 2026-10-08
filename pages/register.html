@@ -168,7 +168,6 @@
                 endpoints.push("http://localhost:3000/api/send-otp");
             }
             endpoints.push("/api/send-otp");
-            endpoints.push("../api/send-otp.php");
             const uniqueEndpoints = [...new Set(endpoints)];
             return new Promise(async (resolve) => {
                 for (const url of uniqueEndpoints) {
