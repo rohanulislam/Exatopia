@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard | Exatopia</title>
+    <link rel="stylesheet" href="../../assets/css/main.css">
+    <style>
+        .admin-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; background: var(--bg-card); border-radius: var(--radius-lg); overflow: hidden; border: 1px solid var(--border); box-shadow: var(--shadow-sm); }
+        .admin-table th { background: var(--bg-inset); color: var(--text-muted); padding: 0.75rem 1rem; text-align: left; font-weight: 700; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid var(--border-md); }
+        .admin-table td { padding: 0.85rem 1rem; border-bottom: 1px solid var(--border); vertical-align: middle; color: var(--text-main); }
+        .admin-table tr:last-child td { border-bottom: none; }
+        .admin-table tr:hover td { background: rgba(92,51,23,0.15); }
+        .role-pill { display: inline-flex; align-items: center; padding: 0.2rem 0.65rem; border-radius: 999px; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+    </style>
+</head>
+<body>
+    
+    <nav class="navbar">
+        <a href="../../index.html" class="logo" style="text-decoration:none;"><span class="logo-e">E</span>Xatopia</a>
+        <button id="menuToggle" class="menu-toggle" aria-label="Menu">☰</button>
+        <div class="nav-links" id="navLinks">
+            <a href="../../index.html">Home</a>
+            <a href="../../pages/student/profile.html">Examinee Profile</a>
+            <a href="../../pages/teacher/profile.html">Examiner Profile</a>
+            <a href="../../pages/student/dashboard.html">Dashboard</a>
+            <a href="../../pages/student/exams.html">Exams</a>
+            <a href="../../pages/teacher/create-exam.html">Set Exam</a>
+            <a href="../../pages/student/viva.html">Viva</a>
+            <a href="../../pages/admin/dashboard.html">Dashboard</a>
+            <a href="../../pages/login.html">Sign In</a>
+            <a href="../../pages/register.html">Register</a>
+            <button id="logoutBtn" class="btn" style="background:#dc2626; color:white; border:none; cursor:pointer; margin-left:1rem;">Logout</button>
+        </div>
+    </nav>
+
+    <main style="padding: 2rem; max-width: 1280px; width: 100%; margin: 0 auto;">
+        <h2>Admin Panel</h2>
+        <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.25rem; margin-bottom: 2rem;">
+            Overview of users, their profiles and their created exams. Admins can remove records from the database.
+        </p>
+
+        <h3>Users</h3>
+        <div id="usersContainer" style="margin-top: 1rem; color: var(--text-muted); margin-bottom: 2.5rem;">
+            <p>Loading users...</p>
+        </div>
+
+        <h3>All Created Exams</h3>
+        <div id="examsContainer" style="margin-top: 1rem; color: var(--text-muted); margin-bottom: 2.5rem;">
+            <p>Loading exams...</p>
+        </div>
+    </main>
+
+    <script type="module">
+        import { protectRoute } from "../../js/guard.js";
+        import { logoutUser } from "../../js/auth.js";
+        import { auth, db } from "../../js/firebase-config.js";
+        import { collection, getDocs, doc, deleteDoc, query, where, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { deleteExam } from "../../js/exam.js";
+
+        protectRoute(["admin"]);
+
+        async function loadAdminPanel() {
+            const usersEl = document.getElementById("usersContainer");
+            const examsEl = document.getElementById("examsContainer");
+
+            try {
+                const userSnap = await getDocs(collection(db, "users"));
+                const users = [];
+                userSnap.forEach(d => users.push({ id: d.id, ...d.data() }));
+
+                if (users.length === 0) {
+                    usersEl.innerHTML = `<p style="color: var(--text-muted);">No users found.</p>`;
+                } else {
+                    usersEl.innerHTML = `
+                        <div style="overflow-x:auto;">
+                            <table class="admin-table">
+                                <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Institution</th><th>Created</th><th>Action</th></tr></thead>
+                                <tbody>
+                                    ${users.map(u => `
+                                        <tr>
+                                            <td><strong>${u.name || '—'}</strong></td>
+                                            <td>${u.email || '—'}</td>
+                                            <td><span class="role-pill" style="background:${u.role === 'admin' ? '#312e81' : '#064e3b'}; color:${u.role === 'admin' ? '#a5b4fc' : '#34d399'};">${u.role || 'user'}</span></td>
+                                            <td>${u.institution || 'Not specified'}</td>
+                                            <td style="color:var(--text-muted);font-size:0.8rem;">${u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '—'}</td>
+                                            <td>
+                                                <button type="button" class="btn" style="background:#dc2626;color:white;font-size:0.75rem;border:none;cursor:pointer;padding:0.35rem 0.7rem;border-radius:6px;" onclick="adminDeleteUser('${u.id}', '${(u.email || 'user').replace(/'/g, "\\'")}')">
+                                                    Delete User
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    `;
+                }
+            } catch (e) {
+                usersEl.innerHTML = `<p style="color:#ef4444;">Error: ${e.message}</p>`;
+            }
+
+            try {
+                const examSnap = await getDocs(collection(db, "exams"));
+                const exams = [];
+                examSnap.forEach(d => exams.push({ id: d.id, ...d.data() }));
+
+                if (exams.length === 0) {
+                    examsEl.innerHTML = `<p style="color: var(--text-muted);">No exams created yet.</p>`;
+                } else {
+                    examsEl.innerHTML = `
+                        <div style="overflow-x:auto;">
+                            <table class="admin-table">
+                                <thead><tr><th>Title</th><th>Code</th><th>Created By</th><th>Type</th><th>Status</th><th>Action</th></tr></thead>
+                                <tbody>
+                                    ${exams.map(ex => `
+                                        <tr>
+                                            <td><strong>${ex.title || 'Exam'}</strong></td>
+                                            <td style="color:var(--brown-200);font-weight:600;">${ex.code || '—'}</td>
+                                            <td style="color:var(--text-muted);font-size:0.82rem;">${ex.teacherEmail || ex.studentEmail || ex.studentId || '—'}</td>
+                                            <td>${ex.isMock ? '<span class="role-pill" style="background:var(--bg-inset);color:var(--text-muted);border:1px solid var(--border-md);">Practice</span>' : '<span class="role-pill" style="background:rgba(160,98,42,0.25);color:var(--brown-200);border:1px solid rgba(200,133,74,0.4);">Formal</span>'}</td>
+                                            <td>${ex.status || '—'}</td>
+                                            <td>
+                                                <button type="button" class="btn" style="background:#dc2626;color:white;font-size:0.75rem;border:none;cursor:pointer;padding:0.35rem 0.7rem;border-radius:6px;" onclick="adminDeleteExam('${ex.id}', '${(ex.title || 'Exam').replace(/'/g, "\\'")}')">
+                                                    Delete
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    `;
+                }
+            } catch (e) {
+                examsEl.innerHTML = `<p style="color:#ef4444;">Error: ${e.message}</p>`;
+            }
+        }
+
+        window.adminDeleteUser = async (uid, label) => {
+            if (!confirm(`Delete user "${label}"? This removes their profile, exams, vivas and attempts data. Note: their Firebase Auth account cannot be removed from the browser.`)) return;
+            try {
+                
+                await deleteDoc(doc(db, "users", uid));
+
+                
+                const exSnap = await getDocs(query(collection(db, "exams"), where("teacherId", "==", uid)));
+                for (const exDoc of exSnap.docs) {
+                    try { await deleteExam(exDoc.id); } catch (e) {}
+                }
+                const exMock = await getDocs(query(collection(db, "exams"), where("studentId", "==", uid)));
+                for (const exDoc of exMock.docs) {
+                    try { await deleteExam(exDoc.id); } catch (e) {}
+                }
+
+                
+                const vSnap = await getDocs(query(collection(db, "vivas"), where("studentId", "==", uid)));
+                for (const vDoc of vSnap.docs) { await deleteDoc(doc(db, "vivas", vDoc.id)); }
+
+                
+                const aSnap = await getDocs(query(collection(db, "attempts"), where("studentId", "==", uid)));
+                for (const aDoc of aSnap.docs) { await deleteDoc(doc(db, "attempts", aDoc.id)); }
+
+                alert(`User "${label}" and their data have been removed from the database.`);
+                loadAdminPanel();
+            } catch (err) {
+                alert("Error deleting user: " + err.message);
+            }
+        };
+
+        window.adminDeleteExam = async (examId, title) => {
+            if (!confirm(`Delete exam "${title}"?`)) return;
+            try {
+                await deleteExam(examId);
+                alert(`Exam "${title}" deleted.`);
+                loadAdminPanel();
+            } catch (err) {
+                alert("Error deleting exam: " + err.message);
+            }
+        };
+
+        auth.onAuthStateChanged(async (user) => {
+            if (user) {
+                
+                try {
+                    const snap = await getDoc(doc(db, "users", user.uid));
+                    if (!snap.exists() || snap.data().role !== "admin") {
+                        alert("Admin access only.");
+                        window.location.href = "../student/dashboard.html";
+                        return;
+                    }
+                    loadAdminPanel();
+                } catch (e) {
+                    console.warn("Admin check failed:", e.message);
+                    window.location.href = "../student/dashboard.html";
+                }
+            }
+        });
+    </script>
+    <script type="module" src="../../js/nav.js"></script>
+
+    <footer class="site-footer">&copy; 2026 Exatopia Team. All rights reserved.</footer>
+</body>
+</html>

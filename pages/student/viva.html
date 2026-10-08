@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Viva | Exatopia</title>
+    <link rel="stylesheet" href="../../assets/css/main.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <style>
+        .setup-card {
+            background: linear-gradient(145deg, var(--bg-card) 0%, rgba(30,16,8,0.95) 100%);
+            border: 1px solid var(--border-md);
+            padding: 2.25rem;
+            border-radius: var(--radius-xl);
+            max-width: none;
+            margin: 0 auto 2rem;
+            box-shadow: var(--shadow-lg), var(--shadow-glow);
+            position: relative; overflow: hidden;
+        }
+        #setupSection { max-width: 900px; width: 100%; margin: 0 auto; padding: 2.25rem 1.75rem; }
+        .setup-card::before { content:""; position:absolute; top:0; left:0; right:0; height:3px; background:linear-gradient(90deg,var(--brown-600),var(--brown-300),var(--brown-400)); }
+        .form-group { display: flex; flex-direction: column; gap: 0.45rem; margin-bottom: 1.1rem; }
+        .form-group label { font-weight: 600; font-size: 0.83rem; color: var(--text-muted); letter-spacing:0.02em; text-transform:uppercase; }
+        .form-group input, .form-group textarea { padding: 0.7rem 0.9rem; border-radius: var(--radius-sm); border: 1px solid var(--border-md); background: var(--bg-inset); color: var(--text-main); font-family: inherit; font-size: 0.925rem; transition: border-color 0.2s, box-shadow 0.2s; }
+        .form-group input:focus, .form-group textarea:focus { outline: none; border-color: var(--brown-400); box-shadow: 0 0 0 3px rgba(160,98,42,0.2); }
+
+        #vivaRoom { display: none; max-width: 900px; width: 100%; margin: 0 auto; padding: 2.25rem 1.75rem 3rem; }
+        .viva-header {
+            background: linear-gradient(135deg, var(--brown-700) 0%, var(--brown-600) 100%);
+            border: 1px solid var(--border-md);
+            border-radius: var(--radius-lg);
+            padding: 1.25rem 1.75rem;
+            margin-bottom: 1.5rem;
+            display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem;
+            box-shadow: var(--shadow-md);
+        }
+        .viva-header h2 { margin: 0; font-size: 1.1rem; color: var(--text-heading); }
+        .progress-dots { display: flex; gap: 0.5rem; }
+        .dot { width: 14px; height: 14px; border-radius: 50%; background: rgba(255,255,255,0.2); transition: background 0.3s; }
+        .dot.active   { background: #fbbf24; }
+        .dot.done     { background: #34d399; }
+        .dot.answered { background: var(--brown-300); }
+
+        #chatLog { display: flex; flex-direction: column; gap: 1rem; margin-bottom: 1.5rem; min-height: 120px; }
+        .bubble { display: flex; gap: 0.75rem; align-items: flex-start; animation: bubbleIn 0.3s ease; }
+        @keyframes bubbleIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+        .bubble.ai { flex-direction: row; }
+        .bubble.student { flex-direction: row-reverse; }
+        .avatar { width:38px; height:38px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1.2rem; flex-shrink:0; }
+        .ai .avatar      { background: var(--brown-700); border: 1px solid var(--border-md); }
+        .student .avatar { background: rgba(21,128,61,0.35); border: 1px solid rgba(52,211,153,0.25); }
+        .bubble-body { max-width:80%; padding:0.85rem 1.1rem; border-radius:14px; font-size:0.93rem; line-height:1.55; }
+        .ai .bubble-body { background:var(--bg-card); border:1px solid var(--border); border-bottom-left-radius:4px; color:var(--text-main); }
+        .student .bubble-body { background:rgba(21,128,61,0.12); border:1px solid rgba(52,211,153,0.2); border-bottom-right-radius:4px; text-align:right; color:var(--text-main); }
+        .score-badge { display:inline-block; margin-top:0.5rem; padding:0.2rem 0.65rem; border-radius:99px; font-size:0.75rem; font-weight:700; }
+        .score-good    { background:rgba(21,128,61,0.2);  color:#4ade80; border:1px solid rgba(74,222,128,0.3); }
+        .score-average { background:rgba(180,83,9,0.2);   color:#fbbf24; border:1px solid rgba(251,191,36,0.3); }
+        .score-poor    { background:rgba(185,28,28,0.2);  color:#f87171; border:1px solid rgba(248,113,113,0.3); }
+
+        #micArea { background:var(--bg-card); border:1px solid var(--border-md); border-radius:var(--radius-lg); padding:1.75rem; text-align:center; box-shadow:var(--shadow-sm); }
+        #micBtn {
+            width:80px; height:80px; border-radius:50%; border:none; cursor:pointer; font-size:2rem;
+            display:flex; align-items:center; justify-content:center; margin:0 auto 1rem;
+            background:linear-gradient(135deg,var(--brown-600),var(--brown-500)); color:var(--brown-100);
+            transition:background 0.2s,transform 0.15s,box-shadow 0.2s;
+            box-shadow:0 4px 16px rgba(92,51,23,0.4);
+        }
+        #micBtn:hover { transform:scale(1.07); }
+        #micBtn.recording { background:linear-gradient(135deg,#991b1b,#dc2626); box-shadow:0 0 0 6px rgba(220,38,38,0.25); animation:pulse 1.2s infinite; }
+        #micBtn:disabled { opacity:0.5; cursor:not-allowed; transform:none; }
+        @keyframes pulse { 0%,100% { box-shadow:0 0 0 6px rgba(220,38,38,0.25); } 50% { box-shadow:0 0 0 14px rgba(220,38,38,0.08); } }
+        #transcriptBox { background:var(--bg-inset); border:1px dashed var(--border-md); border-radius:var(--radius-md); min-height:52px; padding:0.75rem 1rem; font-size:0.92rem; color:var(--text-muted); margin-bottom:1rem; text-align:left; transition:border-color 0.2s; }
+        #transcriptBox.speaking { border-color:var(--brown-400); color:var(--text-main); }
+        #submitAnswerBtn { width:100%; padding:0.8rem; border-radius:var(--radius-md); border:none; cursor:pointer; background:linear-gradient(135deg,#166534,#15803d); color:white; font-size:0.95rem; font-weight:700; transition:background 0.2s; font-family:inherit; }
+        #submitAnswerBtn:hover   { background:linear-gradient(135deg,#14532d,#166534); }
+        #submitAnswerBtn:disabled { background:var(--bg-inset); color:var(--text-muted); cursor:not-allowed; opacity:0.6; }
+        #micHint  { font-size:0.8rem; color:var(--text-faint); margin-top:0.4rem; }
+        #aiStatus { font-size:0.88rem; color:var(--brown-300); margin-top:0.5rem; min-height:1.4em; }
+
+        #summarySection { display:none; max-width:900px; width:100%; margin:0 auto; padding:2.25rem 1.75rem; }
+        .summary-card { background:linear-gradient(145deg,var(--bg-card),rgba(30,16,8,0.95)); border:1px solid var(--border-md); border-radius:var(--radius-xl); padding:2.25rem; text-align:center; box-shadow:var(--shadow-lg); }
+        .summary-score-ring { width:115px; height:115px; border-radius:50%; margin:1.25rem auto; display:flex; align-items:center; justify-content:center; font-size:2rem; font-weight:900; border:5px solid var(--brown-500); color:var(--text-heading); }
+        .summary-qlist { text-align:left; margin-top:1.5rem; }
+        .summary-qlist li { margin-bottom:0.85rem; font-size:0.9rem; line-height:1.55; color:var(--text-main); }
+        .ai-badge { background:rgba(160,98,42,0.15); color:var(--brown-300); border:1px solid rgba(200,133,74,0.3); padding:0.28rem 0.75rem; border-radius:99px; font-size:0.72rem; text-transform:uppercase; font-weight:700; letter-spacing:0.06em; }
+    </style>
+</head>
+    <nav class="navbar">
+        <a href="../../index.html" class="logo" style="text-decoration:none;"><span class="logo-e">E</span>Xatopia</a>
+        <button id="menuToggle" class="menu-toggle" aria-label="Menu">☰</button>
+        <div class="nav-links" id="navLinks">
+            <a href="../../index.html">Home</a>
+            <a href="../../pages/student/profile.html">Examinee Profile</a>
+            <a href="../../pages/teacher/profile.html">Examiner Profile</a>
+            <a href="../../pages/student/dashboard.html">Dashboard</a>
+            <a href="../../pages/student/exams.html">Exams</a>
+            <a href="../../pages/teacher/create-exam.html">Set Exam</a>
+            <a href="../../pages/student/viva.html">Viva</a>
+            <a href="../../pages/admin/dashboard.html">Dashboard</a>
+            <a href="../../pages/login.html">Sign In</a>
+            <a href="../../pages/register.html">Register</a>
+            <button id="logoutBtn" class="btn btn-danger" style="border:none; margin-left:0.5rem;">Logout</button>
+        </div>
+    </nav>
+
+    
+    <main id="setupSection">
+        <div class="setup-card">
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem; flex-wrap:wrap; gap:0.5rem;">
+                <h2 style="margin:0;">AI Viva</h2>
+                <span class="ai-badge">Voice Mode</span>
+            </div>
+            <p style="color:#94a3b8; font-size:0.9rem; margin-bottom:1.75rem;">
+                Upload your study material and have a live spoken conversation with the AI examiner.
+                It will ask you <strong>3 open-ended questions</strong> — answer by voice and receive
+                instant evaluated feedback.
+            </p>
+
+            <form id="setupForm" onsubmit="return false;">
+                <div class="form-group">
+                    <label>Upload Study Material (PDF)</label>
+                    <input type="file" id="pdfFile" accept="application/pdf">
+                </div>
+
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+                    <div class="form-group">
+                        <label>Start Page (Optional)</label>
+                        <input type="number" id="startPage" placeholder="e.g. 1" min="1">
+                    </div>
+                    <div class="form-group">
+                        <label>End Page (Optional)</label>
+                        <input type="number" id="endPage" placeholder="e.g. 5" min="1">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Or Paste Notes / Syllabus Text</label>
+                    <textarea id="contextText" rows="4" placeholder="Paste chapter content, lecture summaries, or key concepts..."></textarea>
+                </div>
+
+                <button type="button" id="startBtn" class="btn btn-primary"
+                    style="width:100%; padding:0.9rem; font-size:1rem; cursor:pointer; margin-top:0.5rem;"
+                    onclick="window.startVivaSetup()">
+                    Start AI Viva
+                </button>
+                <p id="setupStatus" style="margin-top:0.9rem; text-align:center; font-size:0.9rem;"></p>
+            </form>
+        </div>
+
+        
+        <div class="setup-card" id="pastVivasCard" style="display:none;">
+            <h3 style="margin-bottom:1rem;">🕘 Past AI Viva Sessions</h3>
+            <div id="pastVivasList"></div>
+        </div>
+    </main>
+
+    
+    <div id="vivaRoom">
+        <div class="viva-header">
+            <div>
+                <h2>🎤 Viva in Progress</h2>
+                <span style="font-size:0.82rem; opacity:0.8;" id="questionCounter">Question 1 of 3</span>
+            </div>
+            <div class="progress-dots">
+                <div class="dot" id="dot0"></div>
+                <div class="dot" id="dot1"></div>
+                <div class="dot" id="dot2"></div>
+            </div>
+        </div>
+
+        
+        <div id="chatLog"></div>
+
+        
+        <div id="micArea">
+            <button id="micBtn" title="Hold to record">🎤</button>
+            <p id="micHint">Press the mic to start recording. Press again to stop.</p>
+
+            <div id="transcriptBox">Your answer will appear here…</div>
+
+            <button id="submitAnswerBtn" disabled>✅ Submit Answer</button>
+            <p id="aiStatus"></p>
+        </div>
+    </div>
+
+    
+    <div id="summarySection">
+        <div class="summary-card">
+            <h2>Viva Complete 🎓</h2>
+            <p style="color:#94a3b8;">Here is how you performed across all 3 questions.</p>
+
+            <div class="summary-score-ring" id="summaryRing">—</div>
+            <p id="summaryLabel" style="font-size:1.05rem; font-weight:600; color:var(--brown-200);"></p>
+
+            <ol class="summary-qlist" id="summaryList"></ol>
+
+            <div style="display:flex; gap:1rem; justify-content:center; margin-top:1.75rem; flex-wrap:wrap;">
+                <button onclick="location.reload()" class="btn btn-primary" style="cursor:pointer;">🔄 Start New Viva</button>
+                <a href="dashboard.html" class="btn" style="background:var(--bg-inset); color:var(--text-main); border:1px solid var(--border-md); text-decoration:none;">Back to Dashboard</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        
+        window.addEventListener('load', async function() {
+            try {
+                const [apiModule, guardModule, firebaseModule, pdfModule, examModule] = await Promise.all([
+                    import('../../js/api.js'),
+                    import('../../js/guard.js'),
+                    import('../../js/firebase-config.js'),
+                    import('../../js/pdf-extract.js'),
+                    import('../../js/exam.js')
+                ]);
+
+                
+                window.generateVivaQuestions = apiModule.generateVivaQuestions;
+                window.evaluateVivaAnswer = apiModule.evaluateVivaAnswer;
+                window.protectRoute = guardModule.protectRoute;
+                window.extractTextFromPDF = pdfModule.extractTextFromPDF;
+                window.auth = firebaseModule.auth;
+                window.saveVivaResult = examModule.saveVivaResult;
+                window.getStudentVivaHistory = examModule.getStudentVivaHistory;
+
+                
+                window.protectRoute(["student"]);
+                window._moduleLoaded = true;
+                console.log('[VIVA] All modules loaded successfully');
+
+                
+                firebaseModule.auth.onAuthStateChanged((u) => {
+                    if (u && typeof window.loadPastVivas === 'function') window.loadPastVivas();
+                });
+            } catch (err) {
+                console.error('[VIVA] Module load error:', err);
+                var statusEl = document.getElementById('setupStatus');
+                if (statusEl) {
+                    statusEl.textContent = '⚠️ Error loading modules: ' + err.message;
+                    statusEl.style.color = '#ef4444';
+                }
+            }
+        });
+    </script>
+    <script type="text/javascript">
+        
+        
+        let questions       = [];
+        let currentQ        = 0;
+        let contextText     = "";
+        let scores          = [];
+        let feedbacks       = [];
+        let answers         = [];
+        let conversation    = [];
+        let recognition     = null;
+        let isRecording     = false;
+        let currentTranscript = "";
+
+        
+        function speak(text, onEnd) {
+            window.speechSynthesis.cancel();
+            if (!text) {
+                if (onEnd) onEnd();
+                return;
+            }
+            const utt = new SpeechSynthesisUtterance(text);
+            utt.rate  = 0.95;
+            utt.pitch = 1.0;
+            utt.lang  = "en-US";
+            const voices = speechSynthesis.getVoices();
+            const preferred = voices.find(v => /Google UK English|Google US English|Samantha|Daniel/i.test(v.name));
+            if (preferred) utt.voice = preferred;
+
+            let finished = false;
+            const done = () => {
+                if (finished) return;
+                finished = true;
+                if (onEnd) onEnd();
+            };
+            utt.onend = done;
+            utt.onerror = done;
+            speechSynthesis.speak(utt);
+            setTimeout(() => {
+                const poll = setInterval(() => {
+                    if (finished) {
+                        clearInterval(poll);
+                        return;
+                    }
+                    if (!speechSynthesis.speaking && !speechSynthesis.pending) {
+                        clearInterval(poll);
+                        done();
+                    }
+                }, 350);
+            }, 400);
+            setTimeout(done, Math.min(60000, Math.max(12000, String(text).length * 140)));
+        }
+
+        
+        if (speechSynthesis.onvoiceschanged !== undefined) {
+            speechSynthesis.onvoiceschanged = () => {};
+        }
+
+        
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        let recognitionSupported = !!SpeechRecognition;
+
+        function initRecognition() {
+            if (!recognitionSupported) return;
+            recognition = new SpeechRecognition();
+            recognition.lang          = "en-US";
+            recognition.interimResults = true;
+            recognition.continuous    = true;
+
+            recognition.onresult = (e) => {
+                let interim = "", final = "";
+                for (let i = e.resultIndex; i < e.results.length; i++) {
+                    const t = e.results[i][0].transcript;
+                    if (e.results[i].isFinal) final += t;
+                    else interim += t;
+                }
+                if (final) {
+                    currentTranscript += (currentTranscript ? " " : "") + final.trim();
+                }
+                transcriptBox.textContent = currentTranscript + interim;
+                transcriptBox.classList.add("speaking");
+            };
+
+            recognition.onerror = (e) => {
+                if (e.error !== "aborted") {
+                    setStatus("⚠️ Mic error: " + e.error + ". Try typing your answer below.", "#f59e0b");
+                }
+            };
+
+            recognition.onend = () => {
+                if (isRecording) {
+                    
+                    try { recognition.start(); } catch (_) {}
+                }
+            };
+        }
+
+        
+        const setupSection    = document.getElementById("setupSection");
+        const vivaRoom        = document.getElementById("vivaRoom");
+        const summarySection  = document.getElementById("summarySection");
+        const chatLog         = document.getElementById("chatLog");
+        const micBtn          = document.getElementById("micBtn");
+        const transcriptBox   = document.getElementById("transcriptBox");
+        const submitAnswerBtn = document.getElementById("submitAnswerBtn");
+        const aiStatus        = document.getElementById("aiStatus");
+        const questionCounter = document.getElementById("questionCounter");
+        const setupStatus     = document.getElementById("setupStatus");
+
+        
+        window.startVivaSetup = async function() {
+            console.log("[VIVA] Setup form submitted via onclick");
+            const startBtn = document.getElementById("startBtn");
+            startBtn.disabled = true;
+            setupStatus.style.color = "#a5b4fc";
+
+            try {
+                const fileInput = document.getElementById("pdfFile");
+                let text        = document.getElementById("contextText").value.trim();
+                const sp        = document.getElementById("startPage").value;
+                const ep        = document.getElementById("endPage").value;
+                console.log("[VIVA] File files:", fileInput.files.length, "Text length:", text.length);
+
+                if (fileInput.files.length > 0) {
+                    setupStatus.textContent = "📄 Extracting PDF text…";
+                    console.log("[VIVA] Extracting PDF...");
+                    text = await window.extractTextFromPDF(fileInput.files[0], sp, ep);
+                    console.log("[VIVA] PDF text extracted, length:", text.length);
+                }
+
+                if (!text) {
+                    setupStatus.style.color = "#f59e0b";
+                    setupStatus.textContent = "Please upload a PDF or paste some notes first.";
+                    startBtn.disabled = false;
+                    return;
+                }
+
+                contextText = text;
+                scores       = [];
+                feedbacks    = [];
+                answers      = [];
+                conversation = [];
+                setupStatus.textContent = "🤖 Generating viva questions with AI…";
+                console.log("[VIVA] Generating questions via OpenRouter...");
+
+                const user  = window.auth ? window.auth.currentUser : null;
+                const token = user ? await user.getIdToken() : null;
+                questions   = await window.generateVivaQuestions({ contextText, token });
+                console.log("[VIVA] Questions generated:", questions ? questions.length : 0);
+
+                if (!questions || questions.length === 0) throw new Error("No questions generated.");
+
+                questions = questions.map(q => {
+                    if (typeof q === "string") return q;
+                    return q.text || q.question || String(q);
+                }).filter(Boolean);
+
+                if (questions.length === 0) throw new Error("No questions generated.");
+
+                
+                while (questions.length < 3) questions.push(questions[questions.length - 1]);
+                questions = questions.slice(0, 3);
+
+                setupSection.style.display = "none";
+                vivaRoom.style.display     = "block";
+
+                initRecognition();
+                startConversation();
+
+            } catch (err) {
+                setupStatus.style.color = "#ef4444";
+                setupStatus.textContent = "Error: " + err.message;
+                startBtn.disabled = false;
+            }
+        };
+
+        
+        function startConversation() {
+            micBtn.disabled = true;
+            submitAnswerBtn.disabled = true;
+            const greeting = "Welcome. I will ask you three questions from your study material. Answer each one by voice, and I will tell you how you did.";
+            addBubble("ai", greeting);
+            setStatus("🔊 Examiner speaking…");
+            speak(greeting, () => askQuestion(0));
+        }
+
+        function enableStudentTurn() {
+            micBtn.disabled = false;
+            if (!recognitionSupported) {
+                transcriptBox.contentEditable = "true";
+                transcriptBox.focus();
+                transcriptBox.style.color = "#e2e8f0";
+                submitAnswerBtn.disabled = false;
+                setStatus("🖊️ Speech not supported in this browser. Type your answer above, then submit.");
+            } else {
+                setStatus("Press 🎤 and speak your answer.");
+            }
+        }
+
+        
+        function askQuestion(idx) {
+            currentQ = idx;
+            currentTranscript = "";
+            transcriptBox.contentEditable = "false";
+            transcriptBox.textContent = "Your answer will appear here…";
+            transcriptBox.classList.remove("speaking");
+            submitAnswerBtn.disabled  = true;
+            micBtn.disabled           = true;
+            setStatus("");
+
+            
+            questionCounter.textContent = `Question ${idx + 1} of 3`;
+            updateDots();
+
+            const q = questions[idx];
+
+            
+            addBubble("ai", `<strong>Q${idx + 1}:</strong> ${q}`);
+
+            setStatus("🔊 Examiner speaking…");
+            speak(`Question ${idx + 1}. ${q}`, () => {
+                enableStudentTurn();
+            });
+        }
+
+        
+        micBtn.addEventListener("click", () => {
+            if (!recognitionSupported) {
+                
+                transcriptBox.contentEditable = "true";
+                transcriptBox.focus();
+                transcriptBox.style.color = "#e2e8f0";
+                submitAnswerBtn.disabled  = false;
+                setStatus("🖊️ Speech not supported in this browser. Type your answer above, then submit.");
+                return;
+            }
+
+            if (micBtn.disabled) return;
+
+            if (!isRecording) {
+                startRecording();
+            } else {
+                stopRecording();
+            }
+        });
+
+        function startRecording() {
+            window.speechSynthesis.cancel();
+            isRecording = true;
+            currentTranscript = "";
+            transcriptBox.textContent = "";
+            micBtn.classList.add("recording");
+            micBtn.title = "Recording — click to stop";
+            setStatus("🔴 Recording… speak your answer.");
+            submitAnswerBtn.disabled = true;
+            try {
+                recognition.start();
+            } catch (e) {
+                
+            }
+        }
+
+        function stopRecording() {
+            isRecording = false;
+            micBtn.classList.remove("recording");
+            micBtn.title = "Press to record";
+            setStatus("✅ Recording stopped. Review your answer and submit.");
+            try { recognition.stop(); } catch (_) {}
+            
+            const ans = getAnswer();
+            if (ans.trim()) submitAnswerBtn.disabled = false;
+        }
+
+        
+        function getAnswer() {
+            if (transcriptBox.isContentEditable) return transcriptBox.textContent.trim();
+            return currentTranscript.trim();
+        }
+
+        
+        submitAnswerBtn.addEventListener("click", async () => {
+            if (isRecording) stopRecording();
+            const answer = getAnswer();
+            if (!answer) { setStatus("⚠️ No answer detected. Please speak or type."); return; }
+
+            submitAnswerBtn.disabled = true;
+            micBtn.disabled          = true;
+            setStatus("🤖 AI is evaluating your answer…");
+
+            addBubble("student", answer);
+
+            try {
+                const user  = window.auth ? window.auth.currentUser : null;
+                const token = user ? await user.getIdToken() : null;
+
+                const result = await window.evaluateVivaAnswer({
+                    question:    questions[currentQ],
+                    userAnswer:  answer,
+                    contextText: contextText,
+                    token
+                });
+
+                scores.push(result.score);
+                feedbacks.push(result.feedback);
+                answers.push(answer);
+
+                
+                const badgeClass = result.score >= 7 ? "score-good"
+                                 : result.score >= 4 ? "score-average"
+                                 : "score-poor";
+                const scoreLabel = `Score: ${result.score}/10`;
+
+                addBubble("ai",
+                    `${result.feedback} <br><span class="score-badge ${badgeClass}">${scoreLabel}</span>`
+                );
+
+                let spoken = `${result.feedback} I score this answer ${result.score} out of 10.`;
+                if (currentQ + 1 < questions.length) {
+                    spoken += " Let's move to the next question.";
+                    setStatus("🔊 Examiner speaking…");
+                    speak(spoken, () => askQuestion(currentQ + 1));
+                } else {
+                    spoken += " That completes the viva. Here is your overall result.";
+                    setStatus("🔊 Examiner speaking…");
+                    speak(spoken, () => showSummary());
+                }
+
+                
+                const dot = document.getElementById(`dot${currentQ}`);
+                if (dot) dot.classList.add("answered");
+
+                setStatus("");
+            } catch (err) {
+                
+                if (err.message.includes("high demand") || err.message.includes("rate limit") || err.message.includes("quota")) {
+                    showErrorWithRetry("AI service is busy. Please wait before trying again.");
+                } else {
+                    setStatus("⚠️ Evaluation error: " + err.message, "#f59e0b");
+                    submitAnswerBtn.disabled = false;
+                    micBtn.disabled          = false;
+                }
+            }
+        });
+
+        
+        function showSummary() {
+            vivaRoom.style.display    = "none";
+            summarySection.style.display = "block";
+
+            const total = scores.reduce((a, b) => a + b, 0);
+            const max   = questions.length * 10;
+            const pct   = Math.round((total / max) * 100);
+
+            const ring = document.getElementById("summaryRing");
+            ring.textContent = `${pct}%`;
+            ring.style.borderColor = pct >= 70 ? "#22c55e" : pct >= 40 ? "#f59e0b" : "#ef4444";
+
+            const label = document.getElementById("summaryLabel");
+            label.textContent = pct >= 80 ? "Excellent! 🌟"
+                              : pct >= 65 ? "Good performance! 👍"
+                              : pct >= 45 ? "Keep practising. 📚"
+                              : "Needs more revision. 💡";
+
+            const list = document.getElementById("summaryList");
+            list.innerHTML = "";
+            questions.forEach((q, i) => {
+                const sc = scores[i];
+                const fc = feedbacks[i] || "";
+                const badge = sc >= 7 ? "score-good" : sc >= 4 ? "score-average" : "score-poor";
+                list.innerHTML += `
+                    <li>
+                        <strong>Q${i+1}:</strong> ${q}<br>
+                        <span class="score-badge ${badge}" style="margin-top:0.35rem;">Score ${sc}/10</span>
+                        <span style="font-size:0.83rem; color:#94a3b8; display:block; margin-top:0.3rem;">${fc}</span>
+                    </li>`;
+            });
+
+            
+            try {
+                if (window.saveVivaResult) {
+                    window.saveVivaResult({
+                        title: "AI Viva",
+                        score: total,
+                        total: max,
+                        questions: questions,
+                        answers: answers,
+                        feedbacks: feedbacks,
+                        scores: scores,
+                        messages: conversation
+                    }).then(() => { if (window.loadPastVivas) window.loadPastVivas(); });
+                }
+            } catch (e) { console.warn("Could not save viva record:", e); }
+
+            
+            for (let i = 0; i < 3; i++) {
+                const d = document.getElementById(`dot${i}`);
+                if (d) { d.classList.remove("active","answered"); d.classList.add("done"); }
+            }
+        }
+
+        
+        function addBubble(role, html) {
+            const div = document.createElement("div");
+            div.className = `bubble ${role}`;
+            div.innerHTML = `
+                <div class="avatar">${role === "ai" ? "🤖" : "🎓"}</div>
+                <div class="bubble-body">${html}</div>`;
+            chatLog.appendChild(div);
+            div.scrollIntoView({ behavior: "smooth", block: "end" });
+
+            
+            const tmp = document.createElement("div");
+            tmp.innerHTML = html;
+            conversation.push({ role: role, text: tmp.textContent.trim() });
+        }
+
+        function escapeHtml(s) {
+            const d = document.createElement("div");
+            d.textContent = s || "";
+            return d.innerHTML;
+        }
+
+        function setStatus(msg, color = "#a5b4fc") {
+            aiStatus.textContent = msg;
+            aiStatus.style.color = color;
+        }
+
+        
+        window.toggleVivaTranscript = function(i) {
+            const el = document.getElementById("viva_transcript_" + i);
+            if (!el) return;
+            el.style.display = (el.style.display === "none" || el.style.display === "") ? "flex" : "none";
+        };
+
+        window.loadPastVivas = async function() {
+            const card = document.getElementById("pastVivasCard");
+            const el = document.getElementById("pastVivasList");
+            if (!card || !el || !window.getStudentVivaHistory) return;
+
+            let list = [];
+            try { list = await window.getStudentVivaHistory(); } catch (e) { list = []; }
+
+            if (!list || list.length === 0) {
+                card.style.display = "none";
+                return;
+            }
+
+            card.style.display = "block";
+            el.innerHTML = list.map((v, i) => {
+                const dateStr = v.completedAt
+                    ? (v.completedAt.toDate ? v.completedAt.toDate().toLocaleString() : new Date(v.completedAt).toLocaleString())
+                    : "—";
+                const badgeClass = v.percentage >= 70 ? "score-good" : v.percentage >= 40 ? "score-average" : "score-poor";
+                const msgs = (v.messages || []).map(m => `
+                    <div class="bubble ${m.role === "student" ? "student" : "ai"}">
+                        <div class="avatar">${m.role === "student" ? "🎓" : "🤖"}</div>
+                        <div class="bubble-body">${escapeHtml(m.text)}</div>
+                    </div>`).join("");
+
+                return `
+                    <div style="background:var(--bg-inset); border:1px solid var(--border-md); border-radius:var(--radius-lg); padding:1rem; margin-bottom:1rem;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
+                            <strong>${escapeHtml(v.title || "AI Viva")}</strong>
+                            <span class="score-badge ${badgeClass}">${v.score}/${v.total} (${v.percentage}%)</span>
+                        </div>
+                        <p style="color:var(--text-muted); font-size:0.82rem; margin:0.4rem 0 0.6rem 0;">📅 ${dateStr}</p>
+                        <button type="button" onclick="toggleVivaTranscript(${i})"
+                            style="background:var(--bg-card); color:var(--brown-200); border:1px solid var(--border-md); border-radius:6px; padding:0.4rem 0.85rem; font-size:0.8rem; cursor:pointer;">
+                            💬 View Conversation
+                        </button>
+                        <div id="viva_transcript_${i}" style="display:none; margin-top:0.9rem; flex-direction:column; gap:0.75rem;">
+                            ${msgs || '<p style="color:var(--text-muted); font-size:0.85rem;">No conversation stored.</p>'}
+                        </div>
+                    </div>`;
+            }).join("");
+        };
+
+        function updateDots() {
+            for (let i = 0; i < 3; i++) {
+                const d = document.getElementById(`dot${i}`);
+                if (!d) continue;
+                d.classList.remove("active", "answered");
+                if (i === currentQ) d.classList.add("active");
+                else if (i < currentQ) d.classList.add("answered");
+            }
+        }
+
+        
+        let lastRetryTime = 0;
+        const MIN_RETRY_INTERVAL = 3000; 
+
+        function showErrorWithRetry(message) {
+            setStatus(message, "#ef4444");
+
+            
+            let retryBtn = document.getElementById("retryVivaBtn");
+            if (!retryBtn) {
+                retryBtn = document.createElement("button");
+                retryBtn.id = "retryVivaBtn";
+                retryBtn.style.cssText = `
+                    margin-top: 1rem;
+                    padding: 0.6rem 1.2rem;
+                    background: #3b82f6;
+                    color: white;
+                    border: none;
+                    border-radius: 6px;
+                    cursor: pointer;
+                    font-size: 0.85rem;
+                `;
+                retryBtn.textContent = "🔄 Try Again";
+                aiStatus.parentNode.appendChild(retryBtn);
+            }
+
+            retryBtn.style.display = "block";
+
+            retryBtn.onclick = () => {
+                retryBtn.style.display = "none";
+                setStatus(""); 
+
+                
+                const now = Date.now();
+                if (now - lastRetryTime < MIN_RETRY_INTERVAL) {
+                    setStatus(`⏳ Please wait ${Math.ceil((MIN_RETRY_INTERVAL - (now - lastRetryTime)) / 1000)} more seconds.`, "#f59e0b");
+                    return;
+                }
+
+                lastRetryTime = now;
+
+                
+                if (window.lastAnswer) {
+                    submitAnswerBtn.click();
+                } else {
+                    setStatus("✅ Ready for next question.", "#a5b4fc");
+                }
+            };
+        }
+    </script>
+    <script type="module" src="../../js/nav.js"></script>
+
+    <footer class="site-footer">&copy; 2026 Exatopia Team. All rights reserved.</footer>
+</body>
+</html>
+

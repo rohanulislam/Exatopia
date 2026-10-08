@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Exam | Exatopia</title>
+    <link rel="stylesheet" href="../../assets/css/main.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <style>
+        .q-card {
+            background: var(--bg-inset);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 1.25rem;
+            margin-top: 0.85rem;
+            transition: border-color 0.2s;
+        }
+        .q-card:hover { border-color: var(--border-md); }
+
+        .q-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.85rem;
+        }
+        .q-card-header strong { color: var(--brown-200); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; }
+
+        .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.55rem; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.55rem; }
+        @media (max-width: 540px) { .grid-3 { grid-template-columns: 1fr; } .grid-2 { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <a href="../../index.html" class="logo" style="text-decoration:none;"><span class="logo-e">E</span>Xatopia</a>
+        <button id="menuToggle" class="menu-toggle" aria-label="Menu">☰</button>
+        <div class="nav-links" id="navLinks">
+            <a href="../../index.html">Home</a>
+            <a href="../../pages/student/profile.html">Examinee Profile</a>
+            <a href="../../pages/teacher/profile.html">Examiner Profile</a>
+            <a href="../../pages/student/dashboard.html">Dashboard</a>
+            <a href="../../pages/student/exams.html">Exams</a>
+            <a href="../../pages/teacher/create-exam.html">Set Exam</a>
+            <a href="../../pages/student/viva.html">Viva</a>
+            <a href="../../pages/admin/dashboard.html">Dashboard</a>
+            <a href="../../pages/login.html">Sign In</a>
+            <a href="../../pages/register.html">Register</a>
+            <button id="logoutBtn" class="btn btn-danger" style="border:none; margin-left:0.5rem;">Logout</button>
+        </div>
+    </nav>
+
+    <main class="page-section">
+        <div style="margin-bottom: 2rem;">
+            <h2 style="font-size:1.5rem; margin-bottom:0.3rem;">Create New Exam</h2>
+            <p style="color:var(--text-muted); font-size:0.9rem;">Configure exam details, generate AI questions from your material, and publish.</p>
+        </div>
+
+        
+        <div class="ai-box" style="margin-bottom:1.75rem;">
+            <div style="display:flex; align-items:center; gap:0.75rem; margin-bottom:0.5rem;">
+                <span style="font-size:1.4rem;">✨</span>
+                <h3 style="color:var(--brown-200); margin:0;">Generate Questions with AI</h3>
+            </div>
+            <p style="color:var(--text-muted); font-size:0.87rem; margin-bottom:1.25rem;">
+                Upload lecture notes (PDF) and optionally set page range to process specific chapters.
+            </p>
+
+            <div style="display:grid; grid-template-columns: 2fr 1fr 1fr 1.3fr; gap:0.75rem;" class="form-group">
+                <div>
+                    <label>Upload Material (PDF)</label>
+                    <input type="file" id="pdfFile" accept="application/pdf" style="width:100%;">
+                </div>
+                <div>
+                    <label>Start Page</label>
+                    <input type="number" id="startPage" placeholder="e.g. 1" min="1" style="width:100%;">
+                </div>
+                <div>
+                    <label>End Page</label>
+                    <input type="number" id="endPage" placeholder="e.g. 5" min="1" style="width:100%;">
+                </div>
+                <div>
+                    <label style="color:var(--brown-300);">No. of Questions</label>
+                    <input type="number" id="aiNumQuestions" value="5" min="1" max="50" placeholder="1–50" style="width:100%;">
+                </div>
+            </div>
+
+            <div style="display:flex; gap:0.75rem; margin-top:0.25rem;">
+                <button type="button" id="generateAiBtn" class="btn btn-primary" style="flex:1; cursor:pointer;">✨ Generate Questions</button>
+            </div>
+
+            <div class="form-group" style="margin-top:1rem; margin-bottom:0;">
+                <label>Or Paste Syllabus / Topic Text</label>
+                <textarea id="contextText" rows="3" placeholder="Paste chapter content, key concepts, or syllabus text here…"></textarea>
+            </div>
+            <p id="aiStatus" style="font-size:0.875rem; margin-top:0.6rem; min-height:1.2em;"></p>
+        </div>
+
+        <form id="createExamForm">
+            
+            <div class="form-section">
+                <h3 style="margin-bottom:1.1rem;">Exam Information</h3>
+
+                <div class="form-group">
+                    <label>Exam Title</label>
+                    <input type="text" id="title" placeholder="e.g. Midterm Computer Networks" required>
+                </div>
+
+                <div class="grid-2" style="margin-bottom:1rem;">
+                    <div class="form-group" style="margin-bottom:0;">
+                        <label>Duration (Minutes)</label>
+                        <input type="number" id="duration" value="30" min="5" required>
+                    </div>
+                    <div class="form-group" style="margin-bottom:0;">
+                        <label>Max Cheat Violations</label>
+                        <input type="number" id="maxViolations" value="3" min="1" required>
+                    </div>
+                </div>
+
+                <div class="grid-2">
+                    <div class="form-group" style="margin-bottom:0;">
+                        <label>Start Time</label>
+                        <input type="datetime-local" id="startTime" required>
+                    </div>
+                    <div class="form-group" style="margin-bottom:0;">
+                        <label>End Time</label>
+                        <input type="datetime-local" id="endTime" required>
+                    </div>
+                </div>
+            </div>
+
+            
+            <div class="form-section">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+                    <h3 style="margin:0;">❓ Questions</h3>
+                    <button type="button" id="addQBtn" class="btn btn-secondary" style="font-size:0.82rem; cursor:pointer; padding:0.45rem 1rem;">+ Add Manual Question</button>
+                </div>
+                <p style="color:var(--text-muted); font-size:0.82rem; margin-bottom:0.5rem;">Add questions manually or generate them with AI above.</p>
+                <div id="questionsList"></div>
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="width:100%; padding:0.9rem; cursor:pointer; font-size:1rem;">Publish Exam</button>
+            <p id="statusMsg" style="margin-top:1rem; text-align:center; min-height:1.2em;"></p>
+        </form>
+    </main>
+
+    
+    <div class="modal-overlay" id="codePopup" style="position:fixed; inset:0; background:rgba(15,8,3,0.85); backdrop-filter:blur(6px); display:none; align-items:center; justify-content:center; z-index:1000;">
+        <div style="background:var(--bg-card); border:1px solid var(--border-md); border-radius:var(--radius-lg); padding:2rem; width:100%; max-width:420px; text-align:center; box-shadow:var(--shadow-lg);">
+            <div style="font-size:2.2rem; margin-bottom:0.5rem;">🎉</div>
+            <h3 style="margin-bottom:0.5rem;">Exam Published!</h3>
+            <p style="color:var(--text-muted); font-size:0.88rem; margin-bottom:1rem;">Share this code with your students to let them join:</p>
+            <p id="codePopupValue" style="font-size:1.6rem; font-weight:800; letter-spacing:0.08em; color:var(--brown-200); background:var(--bg-inset); border:1px solid var(--border-md); border-radius:var(--radius-md); padding:0.75rem; margin-bottom:1.25rem;"></p>
+            <button type="button" id="codePopupOkBtn" class="btn btn-primary" style="cursor:pointer; padding:0.6rem 2rem;">OK</button>
+        </div>
+    </div>
+
+    <script type="module">
+        import { protectRoute }       from "../../js/guard.js";
+        import { createExam }         from "../../js/exam.js";
+        import { auth }               from "../../js/firebase-config.js";
+        import { extractTextFromPDF } from "../../js/pdf-extract.js";
+        import { generateExamQuestions } from "../../js/api.js";
+
+        protectRoute(["teacher"]);
+
+        let questionCount = 0;
+
+        function addQuestionBlock(qData = null) {
+            questionCount++;
+            const qDiv = document.createElement("div");
+            qDiv.className = "q-card";
+            qDiv.id = `q_${questionCount}`;
+            qDiv.innerHTML = `
+                <div class="q-card-header">
+                    <strong>Question ${questionCount}</strong>
+                    <button type="button" class="btn btn-danger" style="padding:0.25rem 0.65rem; font-size:0.72rem; cursor:pointer;" onclick="this.closest('.q-card').remove()">✕ Remove</button>
+                </div>
+                <div class="form-group">
+                    <input type="text" class="q-text" placeholder="Enter question text" value="${qData ? (qData.text || '').replace(/"/g, '&quot;') : ''}" required>
+                </div>
+                <div class="grid-3 form-group">
+                    <input type="text" class="q-opt1" placeholder="Option A" value="${qData && qData.options ? (qData.options[0] || '').replace(/"/g, '&quot;') : ''}" required>
+                    <input type="text" class="q-opt2" placeholder="Option B" value="${qData && qData.options ? (qData.options[1] || '').replace(/"/g, '&quot;') : ''}" required>
+                    <input type="text" class="q-opt3" placeholder="Option C" value="${qData && qData.options ? (qData.options[2] || '').replace(/"/g, '&quot;') : ''}" required>
+                </div>
+                <div class="grid-2 form-group">
+                    <input type="text" class="q-opt4" placeholder="Option D" value="${qData && qData.options ? (qData.options[3] || '').replace(/"/g, '&quot;') : ''}" required>
+                    <input type="text" class="q-ans"  placeholder="Correct Answer (exact option text)" value="${qData ? (qData.correctAnswer || '').replace(/"/g, '&quot;') : ''}" required style="border-color: rgba(52,211,153,0.35);">
+                </div>
+            `;
+            document.getElementById("questionsList").appendChild(qDiv);
+        }
+
+        document.getElementById("addQBtn").addEventListener("click", () => addQuestionBlock());
+
+        const generateAiBtn = document.getElementById("generateAiBtn");
+        generateAiBtn.addEventListener("click", async () => {
+            const aiStatus   = document.getElementById("aiStatus");
+            const fileInput  = document.getElementById("pdfFile");
+            const startPageVal = document.getElementById("startPage").value;
+            const endPageVal   = document.getElementById("endPage").value;
+            let text = document.getElementById("contextText").value.trim();
+
+            if (fileInput.files.length > 0) {
+                aiStatus.style.color = "var(--brown-200)";
+                aiStatus.textContent = "Reading PDF page range…";
+                try {
+                    text = await extractTextFromPDF(fileInput.files[0], startPageVal, endPageVal);
+                } catch (err) {
+                    aiStatus.style.color = "#f87171";
+                    aiStatus.textContent = "Error reading PDF: " + err.message;
+                    return;
+                }
+            }
+
+            if (!text) {
+                aiStatus.style.color = "#fbbf24";
+                aiStatus.textContent = "Please enter some text or upload a PDF first.";
+                return;
+            }
+
+            generateAiBtn.disabled = true;
+            aiStatus.style.color = "var(--brown-300)";
+            aiStatus.textContent = "Generating questions with AI…";
+
+            try {
+                const user = auth.currentUser;
+                const token = user ? await user.getIdToken() : null;
+                const numQuestions = Math.min(50, Math.max(1, parseInt(document.getElementById("aiNumQuestions").value) || 5));
+
+                const questions = await generateExamQuestions({ contextText: text, numQuestions, token });
+
+                if (questions && questions.length > 0) {
+                    questions.forEach(q => addQuestionBlock(q));
+                    aiStatus.style.color = "#34d399";
+                    aiStatus.textContent = `✓ Generated ${questions.length} questions successfully!`;
+                } else {
+                    throw new Error("No questions were returned by AI.");
+                }
+            } catch (err) {
+                aiStatus.style.color = "#f87171";
+                aiStatus.textContent = "AI Generation failed: " + err.message;
+            } finally {
+                generateAiBtn.disabled = false;
+            }
+        });
+
+        document.getElementById("createExamForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const statusMsg = document.getElementById("statusMsg");
+            statusMsg.style.color = "var(--brown-200)";
+            statusMsg.textContent = "Publishing exam…";
+
+            const examData = {
+                title:         document.getElementById("title").value,
+                duration:      document.getElementById("duration").value,
+                maxViolations: document.getElementById("maxViolations").value,
+                startTime:     document.getElementById("startTime").value,
+                endTime:       document.getElementById("endTime").value
+            };
+
+            const questions = [];
+            document.querySelectorAll(".q-card").forEach(card => {
+                questions.push({
+                    text:          card.querySelector(".q-text").value,
+                    type:          "mcq",
+                    options: [
+                        card.querySelector(".q-opt1").value,
+                        card.querySelector(".q-opt2").value,
+                        card.querySelector(".q-opt3").value,
+                        card.querySelector(".q-opt4").value
+                    ],
+                    correctAnswer: card.querySelector(".q-ans").value,
+                    marks: 1
+                });
+            });
+
+            try {
+                const res = await createExam(examData, questions);
+                statusMsg.style.color = "#34d399";
+                statusMsg.textContent = "✓ Exam published!";
+                document.getElementById("codePopupValue").textContent = res.code;
+                document.getElementById("codePopup").style.display = "flex";
+            } catch (err) {
+                statusMsg.style.color = "#f87171";
+                statusMsg.textContent = err.message;
+            }
+        });
+
+        document.getElementById("codePopupOkBtn").addEventListener("click", () => {
+            window.location.href = "../student/exams.html";
+        });
+    </script>
+    <script type="module" src="../../js/nav.js"></script>
+
+    <footer class="site-footer">&copy; 2026 Exatopia Team. All rights reserved.</footer>
+</body>
+</html>
