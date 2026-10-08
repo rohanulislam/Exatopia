@@ -46,7 +46,7 @@ document.addEventListener("DOMContentLoaded", () => {
             if (isLoggedIn && isAdmin) {
                 
                 show = isAdminLink;
-            } else if (label === "Sign In" || label === "Login" || label === "Register") {
+            } else if (label === "Sign In" || label === "Login" || label === "Register" || label === "Sign Up") {
                 show = !isLoggedIn;
             } else if (label === "Home") {
                 show = true;

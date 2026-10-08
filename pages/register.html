@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Register | Exatopia</title>
+    <title>Sign Up | Exatopia</title>
     <link rel="stylesheet" href="../assets/css/main.css">
     <style>
         body { align-items: stretch; }
@@ -72,7 +72,7 @@
             <a href="../pages/student/viva.html">Viva</a>
             <a href="../pages/admin/dashboard.html">Dashboard</a>
             <a href="../pages/login.html">Sign In</a>
-            <a href="../pages/register.html">Register</a>
+            <a href="../pages/register.html">Sign Up</a>
             <button id="logoutBtn" class="btn btn-danger" style="border:none; margin-left:0.5rem;">Logout</button>
         </div>
     </nav>
@@ -82,9 +82,9 @@
             
 
             <div style="margin-bottom: 1.75rem;">
-                <h2>Create Account</h2>
+                <h2>Sign Up</h2>
                 <p style="color:var(--text-muted); font-size:0.88rem; margin-top:0.4rem;">
-                    After registering, a 6-digit OTP verification code will be sent to activate your account.
+                    After signing up, a 6-digit OTP verification code will be sent to activate your account.
                 </p>
             </div>
 
@@ -113,7 +113,7 @@
                     </select>
                 </div>
 
-                <button type="submit" id="registerBtn" class="btn btn-primary" style="cursor:pointer; padding: 0.8rem; font-size: 0.95rem; margin-top:0.25rem;">Create Account</button>
+                <button type="submit" id="registerBtn" class="btn btn-primary" style="cursor:pointer; padding: 0.8rem; font-size: 0.95rem; margin-top:0.25rem;">Sign Up</button>
                 <p id="errorMsg" style="color:#f87171; font-size:0.875rem; min-height:1rem;"></p>
             </form>
 
@@ -162,21 +162,19 @@
         function makeOtp() { return String(Math.floor(100000 + Math.random() * 900000)); }
 
         function sendOtpEmail(email, otp) {
-            const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
             const endpoints = [];
+            const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
             if (isLocal && window.location.port !== "3000") {
                 endpoints.push("http://localhost:3000/api/send-otp");
             }
             endpoints.push("/api/send-otp");
-            if (isLocal) {
-                endpoints.push("http://localhost:3000/api/send-otp");
-            }
             endpoints.push("../api/send-otp.php");
+            const uniqueEndpoints = [...new Set(endpoints)];
             return new Promise(async (resolve) => {
-                for (const url of endpoints) {
+                for (const url of uniqueEndpoints) {
                     try {
                         const controller = new AbortController();
-                        const timer = setTimeout(() => controller.abort(), 6000);
+                        const timer = setTimeout(() => controller.abort(), 3500);
                         const mailRes = await fetch(url, {
                             method: "POST",
                             headers: { "Content-Type": "application/json" },
@@ -239,7 +237,7 @@
 
             errorMsg.textContent = "";
             btn.disabled = true;
-            btn.textContent = "Creating account…";
+            btn.textContent = "Signing up…";
 
             try {
                 pendingUser = { name, email, role, institution };
@@ -299,7 +297,7 @@
                 registrationInProgress = false;
                 errorMsg.textContent = err.message;
                 btn.disabled = false;
-                btn.textContent = "Create Account";
+                btn.textContent = "Sign Up";
             }
         });
 
