@@ -14,4 +14,10 @@ services:
         sync: false
       - key: GMAIL_APP_PASSWORD
         sync: false
+      - key: BREVO_API_KEY
+        sync: false
+      - key: BREVO_SENDER_EMAIL
+        sync: false
+      - key: SITE_URL
+        value: https://exatopia-1.onrender.com
 

@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sign Up | Exatopia</title>
+    <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
     <link rel="stylesheet" href="../assets/css/main.css">
     <style>
         body { align-items: stretch; }
@@ -153,7 +154,7 @@
     <script type="module">
         import { createAuthAccount, finalizeRegistration } from "../js/auth.js";
         import { auth, db } from "../js/firebase-config.js";
-        import { deleteUser, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { deleteUser, signInWithEmailAndPassword, signOut, fetchSignInMethodsForEmail } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
         import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const ADMIN_RECOVERY_EMAIL = "abcd2303421@gmail.com";
@@ -196,19 +197,90 @@
         let isAdminFlow = false;
         let registrationInProgress = false;
         let registrationFinalized = false;
+        let finalizingRegistration = false;
+        let otpExpiryTimer = null;
 
         async function cleanupUnverifiedUser() {
-            if (registrationFinalized) return;
+            // Never fight with an in-flight registration submit
+            if (registrationFinalized || registrationInProgress) return;
+            const u = auth.currentUser;
+            if (!u) return;
+            try {
+                const snap = await getDoc(doc(db, "users", u.uid));
+                if (snap.exists()) return;
+                if (registrationInProgress) return; // re-check after network round-trip
+                try {
+                    await deleteUser(u);
+                } catch (delErr) {
+                    // A long-persisted session can hold a stale token, which the
+                    // Identity Toolkit rejects for account deletion (HTTP 400).
+                    // Signing out is enough here: the registration form re-authenticates
+                    // with fresh credentials and reclaims the leftover account on submit.
+                    console.warn("[register] Auto-cleanup delete skipped:", delErr.message);
+                }
+                await signOut(auth);
+            } catch (e) {
+                console.warn("[register] Auto-cleanup skipped:", e && e.message ? e.message : e);
+            }
+        }
+
+        // ── OTP expiry: remove the never-verified Gmail account from Firebase Auth ──
+        function stopOtpExpiryWatch() {
+            if (otpExpiryTimer) { clearInterval(otpExpiryTimer); otpExpiryTimer = null; }
+        }
+
+        function startOtpExpiryWatch() {
+            stopOtpExpiryWatch();
+            otpExpiryTimer = setInterval(() => {
+                if (registrationFinalized || finalizingRegistration) { stopOtpExpiryWatch(); return; }
+                if (!pendingUser || !primaryOtp) { stopOtpExpiryWatch(); return; }
+                if (Date.now() > primaryExpiresAt) {
+                    stopOtpExpiryWatch();
+                    expirePendingRegistration();
+                }
+            }, 1000);
+        }
+
+        // Called when the user leaves the OTP unverified past its 2-minute age.
+        // The Gmail account created for this attempt is removed from Firebase
+        // Authentication so no orphan, unverified accounts accumulate.
+        async function expirePendingRegistration() {
+            if (registrationFinalized || finalizingRegistration) return;
+            registrationInProgress = false;
+            pendingUser = null;
+            primaryOtp = null;
+            motherOtp = null;
+
+            let accountRemoved = true;
             const u = auth.currentUser;
             if (u) {
                 try {
+                    // Only remove if the profile was never saved — another tab
+                    // may have completed verification in the meantime.
                     const snap = await getDoc(doc(db, "users", u.uid));
-                    if (!snap.exists()) {
+                    if (snap.exists()) {
+                        accountRemoved = false;
+                    } else {
                         await deleteUser(u);
-                        await signOut(auth);
+                        console.log("[register] OTP expired — unverified account removed from Firebase Auth.");
                     }
-                } catch (e) {}
+                } catch (delErr) {
+                    accountRemoved = false;
+                    console.warn("[register] Expired-OTP account removal failed:", delErr.message);
+                }
             }
+
+            // Reset the UI back to a fresh registration form
+            document.getElementById("successBanner").style.display = "none";
+            document.getElementById("registerForm").style.display = "block";
+            document.getElementById("otpInput").value = "";
+            document.getElementById("motherOtpInput").value = "";
+            document.getElementById("errorMsg").textContent = accountRemoved
+                ? "Verification code expired. Your unverified account was removed from Firebase — please register again."
+                : "Verification code expired. Please register again.";
+            const btn = document.getElementById("registerBtn");
+            btn.disabled = false;
+            btn.textContent = "Sign Up";
         }
 
         auth.onAuthStateChanged(async (u) => {
@@ -241,27 +313,34 @@
             try {
                 pendingUser = { name, email, role, institution };
                 registrationInProgress = true;
+                stopOtpExpiryWatch(); // clear any timer from a previous attempt
 
                 let created = null;
-                try {
-                    created = await createAuthAccount(name, email, password, role, institution);
-                } catch (authErr) {
-                    if (authErr.code === "auth/email-already-in-use" || (authErr.message && authErr.message.includes("email-already-in-use"))) {
-                        try {
-                            const cred = await signInWithEmailAndPassword(auth, email, password);
-                            const snap = await getDoc(doc(db, "users", cred.user.uid));
-                            if (!snap.exists()) {
-                                await deleteUser(cred.user);
-                                created = await createAuthAccount(name, email, password, role, institution);
-                            } else {
-                                throw new Error("An account with this email already exists. Please sign in.");
-                            }
-                        } catch (cleanErr) {
-                            throw (cleanErr.message && !cleanErr.message.includes("auth/")) ? cleanErr : new Error("An account with this email already exists. Please sign in.");
-                        }
-                    } else {
-                        throw authErr;
+
+                // Pre-check whether the email already exists in Firebase Auth so we
+                // never trigger a guaranteed-to-fail signUp (HTTP 400 EMAIL_EXISTS)
+                // when a leftover unverified account is still around.
+                const existingMethods = await fetchSignInMethodsForEmail(auth, email).catch(() => []);
+                if (existingMethods && existingMethods.length > 0) {
+                    // Email is already registered — sign in with the password provided.
+                    const cred = await signInWithEmailAndPassword(auth, email, password);
+                    const snap = await getDoc(doc(db, "users", cred.user.uid));
+                    if (snap.exists()) {
+                        throw new Error("An account with this email already exists. Please sign in.");
                     }
+                    // Leftover account from an unfinished registration — reclaim it.
+                    // We just signed in, so the token is fresh and deletion is allowed.
+                    try {
+                        await deleteUser(cred.user);
+                    } catch (delErr) {
+                        // Safety net: force a fresh ID token, then retry once.
+                        await cred.user.getIdToken(true);
+                        await deleteUser(cred.user);
+                    }
+                    await signOut(auth); // deleteUser invalidates the session; be explicit
+                    created = await createAuthAccount(name, email, password, role, institution);
+                } else {
+                    created = await createAuthAccount(name, email, password, role, institution);
                 }
 
                 if (created && created.user) pendingUser.uid = created.user.uid;
@@ -292,7 +371,9 @@
                 document.getElementById("otpExpiryNote").textContent = "OTP expires in 2 minutes.";
                 document.getElementById("registerForm").style.display = "none";
                 document.getElementById("successBanner").style.display = "block";
+                startOtpExpiryWatch(); // remove the account if OTP goes unverified
             } catch (err) {
+                stopOtpExpiryWatch();
                 registrationInProgress = false;
                 errorMsg.textContent = err.message;
                 btn.disabled = false;
@@ -323,6 +404,7 @@
             document.getElementById("otpExpiryNote").textContent = "New OTP expires in 2 minutes.";
             document.getElementById("otpInput").value = "";
             document.getElementById("motherOtpInput").value = "";
+            startOtpExpiryWatch(); // new code = fresh 2-minute window
         });
 
         document.getElementById("verifyOtpBtn").addEventListener("click", async () => {
@@ -337,12 +419,16 @@
             if (isAdminFlow && (!motherOtp || !mother || mother !== motherOtp)) { otpError.textContent = "Incorrect admin-recovery OTP."; return; }
 
             try {
+                finalizingRegistration = true; // blocks the expiry timer mid-save
+                stopOtpExpiryWatch();
                 await finalizeRegistration(pendingUser.name, pendingUser.email, pendingUser.role, pendingUser.institution, pendingUser.uid);
                 registrationFinalized = true;
+                finalizingRegistration = false;
                 document.getElementById("successBanner").style.display = "none";
                 document.getElementById("otpSuccessBanner").style.display = "block";
                 primaryOtp = null; motherOtp = null; pendingUser = null; registrationInProgress = false;
             } catch (err) {
+                finalizingRegistration = false;
                 otpError.textContent = "Could not save profile: " + err.message;
             }
         });

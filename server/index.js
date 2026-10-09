@@ -53,7 +53,7 @@ async function callOpenRouter(prompt, { maxTokens = 2500, temperature = 0.5 } = 
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${apiKey}`,
-          "HTTP-Referer": process.env.SITE_URL || "https://exatopia.onrender.com",
+          "HTTP-Referer": process.env.SITE_URL || "https://exatopia-1.onrender.com",
           "X-Title": "Exatopia"
         },
         body: JSON.stringify({
@@ -89,7 +89,8 @@ app.get(['/health', '/api/health'], (req, res) => {
     uptime: Math.floor(process.uptime()),
     timestamp: new Date().toISOString(),
     aiConfigured: Boolean(process.env.OPENROUTER_API_KEY),
-    emailConfigured: Boolean(process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD)
+    emailConfigured: Boolean(process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD),
+    brevoConfigured: Boolean(process.env.BREVO_API_KEY)
   });
 });
 
@@ -102,13 +103,63 @@ app.post(['/api/send-otp', '/api/send-otp.php'], async (req, res) => {
 
   const gmailUser = (process.env.GMAIL_USER || "").trim();
   const gmailPass = (process.env.GMAIL_APP_PASSWORD || "").trim();
+  const brevoKey = (process.env.BREVO_API_KEY || "").trim();
+  const brevoSender = (process.env.BREVO_SENDER_EMAIL || gmailUser || "").trim();
 
-  if (!gmailUser || !gmailPass) {
-    console.warn('[send-otp] Gmail credentials missing in environment.');
+  if (!brevoKey && (!gmailUser || !gmailPass)) {
+    console.warn('[send-otp] Email credentials missing in environment.');
     return res.json({
       status: 'warning',
-      message: 'Email service not configured. Please set GMAIL_USER and GMAIL_APP_PASSWORD.'
+      message: 'Email service not configured. Please set BREVO_API_KEY or GMAIL_USER and GMAIL_APP_PASSWORD.'
     });
+  }
+
+  const subject = 'Exatopia — Your Verification Code';
+  const text = `Your Exatopia verification code is: ${otp}`;
+  const html = `
+        <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto; padding: 24px; border: 1px solid #e5e7eb; border-radius: 8px;">
+          <h2 style="color: #4f46e5; margin-top: 0;">Exatopia Verification</h2>
+          <p style="font-size: 15px; color: #374151;">Use the following code to complete your verification:</p>
+          <div style="font-size: 32px; font-weight: bold; letter-spacing: 6px; color: #111827; background: #f3f4f6; padding: 12px 20px; border-radius: 6px; text-align: center; margin: 20px 0;">
+            ${otp}
+          </div>
+          <p style="font-size: 13px; color: #6b7280;">This code expires in 2 minutes. If you did not request this, you can ignore this email.</p>
+        </div>
+      `;
+
+  // Primary: Brevo transactional email API (HTTPS/443).
+  // Render's free tier blocks outbound SMTP ports 25/465/587, so raw
+  // Gmail SMTP cannot run there — an HTTPS email API is the free-tier fix.
+  if (brevoKey && brevoSender) {
+    try {
+      const apiRes = await fetch("https://api.brevo.com/v3/smtp/email", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "api-key": brevoKey
+        },
+        body: JSON.stringify({
+          sender: { name: "Exatopia", email: brevoSender },
+          to: [{ email }],
+          subject,
+          textContent: text,
+          htmlContent: html
+        })
+      });
+      const data = await apiRes.json().catch(() => null);
+      if (apiRes.ok) {
+        return res.json({ status: 'success', message: 'OTP sent to ' + email, via: 'brevo' });
+      }
+      console.warn('[send-otp] Brevo failed:', apiRes.status, data?.message || '');
+    } catch (err) {
+      console.warn('[send-otp] Brevo error:', err.message);
+    }
+  }
+
+  // Fallback: Gmail SMTP (local development, or paid Render
+  // instances where port 587 is open).
+  if (!gmailUser || !gmailPass) {
+    return res.json({ status: 'warning', message: 'Email delivery unavailable. OTP is shown on screen.' });
   }
 
   try {
@@ -132,21 +183,12 @@ app.post(['/api/send-otp', '/api/send-otp.php'], async (req, res) => {
     await transporter.sendMail({
       from: `"Exatopia" <${gmailUser}>`,
       to: email,
-      subject: 'Exatopia — Your Verification Code',
-      text: `Your Exatopia verification code is: ${otp}`,
-      html: `
-        <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto; padding: 24px; border: 1px solid #e5e7eb; border-radius: 8px;">
-          <h2 style="color: #4f46e5; margin-top: 0;">Exatopia Verification</h2>
-          <p style="font-size: 15px; color: #374151;">Use the following code to complete your verification:</p>
-          <div style="font-size: 32px; font-weight: bold; letter-spacing: 6px; color: #111827; background: #f3f4f6; padding: 12px 20px; border-radius: 6px; text-align: center; margin: 20px 0;">
-            ${otp}
-          </div>
-          <p style="font-size: 13px; color: #6b7280;">This code expires in 2 minutes. If you did not request this, you can ignore this email.</p>
-        </div>
-      `,
+      subject,
+      text,
+      html,
     });
 
-    res.json({ status: 'success', message: 'OTP sent to ' + email });
+    res.json({ status: 'success', message: 'OTP sent to ' + email, via: 'gmail' });
   } catch (err) {
     console.warn('[send-otp] Mail delivery skipped:', err.message);
     res.json({ status: 'warning', message: 'Failed to send OTP email: ' + err.message });
@@ -338,6 +380,11 @@ app.post(['/api/submit-exam', '/api/submit-exam.php'], (req, res) => {
   });
 });
 
+// ── Favicon (prevents 404 noise from browsers/tools requesting /favicon.ico) ──
+app.get('/favicon.ico', (req, res) => {
+  res.redirect(302, '/assets/favicon.svg');
+});
+
 // ── Fallback Route: Serve index.html for navigation ─────────────────────────
 app.get('*', (req, res) => {
   // If request looks like a missing asset/file with extension, send 404
@@ -349,6 +396,13 @@ app.get('*', (req, res) => {
 
 // Start listening
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, '0.0.0.0', () => {
+const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`Exatopia server running on port ${PORT}`);
+});
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`Port ${PORT} is already in use — is another Exatopia server already running?`);
+    process.exit(1);
+  }
+  throw err;
 });
