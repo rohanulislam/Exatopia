@@ -4,28 +4,23 @@ const nodemailer = require('nodemailer');
 const path = require('path');
 const dotenv = require('dotenv');
 
-// Load environment variables from both root and server directory if available
 dotenv.config({ path: path.resolve(__dirname, '..', '.env') });
 dotenv.config({ path: path.resolve(__dirname, '.env') });
 
 const app = express();
 
-// Middleware
 app.use(cors({ origin: '*' }));
 app.use(express.json({ limit: '10mb' }));
 
-// Static frontend directory (Project root)
 const PROJECT_ROOT = path.resolve(__dirname, '..');
 app.use(express.static(PROJECT_ROOT));
 
-// Available OpenRouter models in fallback order
 const OPENROUTER_MODELS = [
   "openai/gpt-4o-mini",
   "google/gemini-flash-1.5",
   "meta-llama/llama-3.1-8b-instruct"
 ];
 
-// Helper to clean Markdown fences from AI response
 function cleanAiJson(rawText) {
   let clean = String(rawText || "").trim();
   const fence = clean.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
@@ -37,7 +32,6 @@ function cleanAiJson(rawText) {
   return clean;
 }
 
-// Call OpenRouter with automatic model fallback
 async function callOpenRouter(prompt, { maxTokens = 2500, temperature = 0.5 } = {}) {
   const apiKey = (process.env.OPENROUTER_API_KEY || "").trim();
   if (!apiKey) {
@@ -82,7 +76,6 @@ async function callOpenRouter(prompt, { maxTokens = 2500, temperature = 0.5 } = 
   throw lastError || new Error("All AI models failed to respond. Please try again later.");
 }
 
-// ── Health Check ────────────────────────────────────────────────────────────
 app.get(['/health', '/api/health'], (req, res) => {
   res.json({
     status: 'ok',
@@ -94,7 +87,6 @@ app.get(['/health', '/api/health'], (req, res) => {
   });
 });
 
-// ── OTP Mail Endpoint ───────────────────────────────────────────────────────
 app.post(['/api/send-otp', '/api/send-otp.php'], async (req, res) => {
   const { email, otp } = req.body || {};
   if (!email || !otp) {
@@ -127,9 +119,6 @@ app.post(['/api/send-otp', '/api/send-otp.php'], async (req, res) => {
         </div>
       `;
 
-  // Primary: Brevo transactional email API (HTTPS/443).
-  // Render's free tier blocks outbound SMTP ports 25/465/587, so raw
-  // Gmail SMTP cannot run there — an HTTPS email API is the free-tier fix.
   if (brevoKey && brevoSender) {
     try {
       const apiRes = await fetch("https://api.brevo.com/v3/smtp/email", {
@@ -156,8 +145,6 @@ app.post(['/api/send-otp', '/api/send-otp.php'], async (req, res) => {
     }
   }
 
-  // Fallback: Gmail SMTP (local development, or paid Render
-  // instances where port 587 is open).
   if (!gmailUser || !gmailPass) {
     return res.json({ status: 'warning', message: 'Email delivery unavailable. OTP is shown on screen.' });
   }
@@ -195,7 +182,6 @@ app.post(['/api/send-otp', '/api/send-otp.php'], async (req, res) => {
   }
 });
 
-// ── AI Endpoint: Generate Exam Questions (Teacher) ─────────────────────────
 app.post(['/api/ai/generate-questions', '/api/generate-questions'], async (req, res) => {
   const { contextText, numQuestions = 5 } = req.body || {};
   if (!contextText || !String(contextText).trim()) {
@@ -234,7 +220,6 @@ app.post(['/api/ai/generate-questions', '/api/generate-questions'], async (req, 
   }
 });
 
-// ── AI Endpoint: Generate Mock Practice Questions (Student) ─────────────────
 app.post(['/api/ai/generate-mock-exam', '/api/generate-mock-exam'], async (req, res) => {
   const { contextText, numQuestions = 10 } = req.body || {};
   if (!contextText || !String(contextText).trim()) {
@@ -272,7 +257,6 @@ app.post(['/api/ai/generate-mock-exam', '/api/generate-mock-exam'], async (req, 
   }
 });
 
-// ── AI Endpoint: Generate Viva Questions (Student Viva Voce) ───────────────
 app.post(['/api/ai/generate-viva', '/api/generate-viva'], async (req, res) => {
   const { contextText } = req.body || {};
   if (!contextText || !String(contextText).trim()) {
@@ -305,7 +289,6 @@ app.post(['/api/ai/generate-viva', '/api/generate-viva'], async (req, res) => {
       throw new Error("AI returned invalid viva questions.");
     }
 
-    // Normalize to strings or objects with text property
     const normalized = questions.slice(0, 3).map(q => {
       if (typeof q === "string") return { text: q };
       return { text: q.text || q.question || String(q) };
@@ -318,7 +301,6 @@ app.post(['/api/ai/generate-viva', '/api/generate-viva'], async (req, res) => {
   }
 });
 
-// ── AI Endpoint: Evaluate Spoken Viva Answer ────────────────────────────────
 app.post(['/api/ai/evaluate-viva', '/api/evaluate-viva'], async (req, res) => {
   const { question, userAnswer, contextText = "" } = req.body || {};
   if (!question || !userAnswer) {
@@ -368,7 +350,6 @@ app.post(['/api/ai/evaluate-viva', '/api/evaluate-viva'], async (req, res) => {
   }
 });
 
-// ── Exam Submit Endpoint (Fallback scoring acknowledgement) ─────────────────
 app.post(['/api/submit-exam', '/api/submit-exam.php'], (req, res) => {
   const { examId, answers, autoSubmitted, violationCount } = req.body || {};
   res.json({
@@ -380,21 +361,17 @@ app.post(['/api/submit-exam', '/api/submit-exam.php'], (req, res) => {
   });
 });
 
-// ── Favicon (prevents 404 noise from browsers/tools requesting /favicon.ico) ──
 app.get('/favicon.ico', (req, res) => {
   res.redirect(302, '/assets/favicon.svg');
 });
 
-// ── Fallback Route: Serve index.html for navigation ─────────────────────────
 app.get('*', (req, res) => {
-  // If request looks like a missing asset/file with extension, send 404
   if (path.extname(req.path)) {
     return res.status(404).send('File Not Found');
   }
   res.sendFile(path.join(PROJECT_ROOT, 'index.html'));
 });
 
-// Start listening
 const PORT = process.env.PORT || 3000;
 const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`Exatopia server running on port ${PORT}`);

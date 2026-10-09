@@ -887,7 +887,6 @@ tr:hover td { background: rgba(92,51,23,0.2); }
     h1 { font-size: 1.6rem; }
     h2 { font-size: 1.3rem; }
 
-    /* Make tables horizontally scrollable on mobile */
     table {
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
@@ -939,7 +938,6 @@ tr:hover td { background: rgba(92,51,23,0.2); }
         border-bottom: none;
     }
 
-    /* Tab bar horizontal scroll */
     .tab-bar {
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
@@ -957,7 +955,6 @@ tr:hover td { background: rgba(92,51,23,0.2); }
         border-radius: 99px;
     }
 
-    /* Form inputs - slightly larger for mobile */
     .form-input,
     input[type="text"],
     input[type="email"],
@@ -970,7 +967,6 @@ tr:hover td { background: rgba(92,51,23,0.2); }
         padding: 0.85rem 1rem;
     }
 
-    /* Teacher profile mobile adjustments */
     .profile-header {
         flex-direction: column;
         align-items: flex-start;

@@ -75,6 +75,7 @@
         
         <div style="margin-bottom: 2.5rem;">
             <h3 style="margin-bottom: 1rem;">Exams I Created</h3>
+            <input type="text" id="createdSearch" placeholder="🔍 Search exam name…" style="margin-bottom:1rem;">
             <div id="myCreatedExamsList" style="color: var(--text-muted);">
                 <p>Loading your exams…</p>
             </div>
@@ -86,7 +87,8 @@
             <a href="mock-exam.html" class="btn btn-primary" style="font-size: 0.82rem; padding: 0.45rem 1rem;">+ New Practice Exam</a>
         </div>
 
-        <div id="mockExamsList" style="margin-top: 1rem; color: var(--text-muted);">
+        <input type="text" id="mockSearch" placeholder="🔍 Search exam name…" style="margin-bottom:1rem;">
+        <div id="mockExamsList" style="color: var(--text-muted);">
             <p>Loading practice exams…</p>
         </div>
     </main>
@@ -123,94 +125,125 @@
             }
         });
 
+        let createdExamsData = [];
+        let mockExamsData = [];
+
+        function renderCreatedExams(filter = "") {
+            const createdEl = document.getElementById("myCreatedExamsList");
+            const q = filter.trim().toLowerCase();
+
+            if (!createdExamsData.length) {
+                createdEl.innerHTML = `<p style="color: var(--text-muted);">You haven't created any exams yet. Use "Set Exam" to create one.</p>`;
+                return;
+            }
+
+            const items = createdExamsData.filter(ex => (ex.title || "").toLowerCase().includes(q));
+            if (!items.length) {
+                createdEl.innerHTML = `<p style="color: var(--text-muted);">No exams match "${filter.trim()}".</p>`;
+                return;
+            }
+
+            const statusColors = {
+                "Running":     { bg: "rgba(21,128,61,0.2)",  color: "#4ade80", border: "rgba(74,222,128,0.35)" },
+                "Ended":       { bg: "rgba(185,28,28,0.18)", color: "#f87171", border: "rgba(248,113,113,0.35)" },
+                "Yet to start":{ bg: "rgba(180,83,9,0.2)",   color: "#fbbf24", border: "rgba(251,191,36,0.35)" },
+                "Scheduled":   { bg: "var(--bg-inset)",      color: "var(--text-muted)", border: "var(--border-md)" }
+            };
+            createdEl.innerHTML = `
+                <div style="display: grid; gap: 1rem; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));">
+                    ${items.map(ex => {
+                        const st = getExamScheduleStatus(ex);
+                        const c = statusColors[st] || statusColors["Scheduled"];
+                        return `
+                        <div class="mock-item-card">
+                            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:0.5rem;">
+                                <h4 style="margin-bottom: 0.4rem; color: var(--text-heading); font-size: 1rem;">${ex.title}</h4>
+                                <span style="background:${c.bg}; color:${c.color}; border:1px solid ${c.border}; padding:0.15rem 0.55rem; border-radius:999px; font-size:0.72rem; font-weight:700; white-space:nowrap;">${st}</span>
+                            </div>
+                            <p style="color: var(--text-muted); font-size: 0.8rem; margin-bottom: 0.5rem;">Code: <strong style="color:var(--brown-200);">${ex.code}</strong> &nbsp;·&nbsp; Questions: ${ex.questionCount}</p>
+                            <p style="color: var(--text-muted); font-size: 0.8rem;">👥 Submissions: ${ex.submissions} &nbsp;·&nbsp; 📊 Avg score: <strong>${ex.avgScore === null ? '—' : ex.avgScore + '%'}</strong></p>
+                            <div style="margin-top:0.75rem;">
+                                <a href="../teacher/edit-exam.html?examId=${ex.id}" class="btn btn-secondary" style="font-size: 0.8rem; padding: 0.4rem 0.9rem;">✏️ Edit Timing &amp; Questions</a>
+                                 <button type="button" class="btn btn-secondary" style="font-size: 0.8rem; padding: 0.4rem 0.9rem; cursor:pointer;" onclick="openSubmissions('${ex.id}', '${(ex.title || '').replace(/'/g, "\\'")}')">📥 Submissions</button>
+                               
+                            </div>
+                        </div>`;
+                    }).join('')}
+                </div>`;
+        }
+
+        function renderMockExams(filter = "") {
+            const mockExamsEl = document.getElementById("mockExamsList");
+            const q = filter.trim().toLowerCase();
+
+            if (!mockExamsData.length) {
+                mockExamsEl.innerHTML = `
+                    <div class="empty-state" style="background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-lg); padding:3rem 1.5rem;">
+                        <div class="icon">🧪</div>
+                        No practice exams generated yet. Click "+ New Practice Exam" above to create one!
+                    </div>`;
+                return;
+            }
+
+            const items = mockExamsData.filter(mock => (mock.title || "").toLowerCase().includes(q));
+            if (!items.length) {
+                mockExamsEl.innerHTML = `<p style="color: var(--text-muted);">No practice exams match "${filter.trim()}".</p>`;
+                return;
+            }
+
+            mockExamsEl.innerHTML = `
+                <div style="display: grid; gap: 1rem; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));">
+                    ${items.map((mock, idx) => {
+                        const qCount = mock.numQuestions || (mock.questions ? mock.questions.length : 0);
+                        const qHtml = (mock.questions && mock.questions.length > 0)
+                            ? mock.questions.map((q, qIdx) => `
+                                <div style="background: var(--bg-inset); padding: 0.65rem 0.85rem; border-radius: var(--radius-md); margin-top: 0.4rem; font-size: 0.82rem; border: 1px solid var(--border);">
+                                    <strong style="color: var(--text-heading);">Q${qIdx + 1}: ${q.text}</strong>
+                                    <div style="color: #34d399; margin-top: 0.25rem; font-weight:600;">✓ Ans: ${q.correctAnswer}</div>
+                                    ${q.explanation ? `<div style="color: var(--text-muted); font-size: 0.78rem; margin-top: 0.2rem;">${q.explanation}</div>` : ''}
+                                </div>
+                            `).join('')
+                            : `<p style="font-size: 0.8rem; color: var(--text-muted);">Questions stored in practice record.</p>`;
+
+                        return `
+                            <div class="mock-item-card">
+                                <h4 style="margin-bottom: 0.4rem; color: var(--text-heading); font-size: 1rem;">${mock.title || 'Practice Exam'}</h4>
+                                <p style="color: var(--text-muted); font-size: 0.8rem; margin-bottom: 1rem;">Questions: ${qCount} &nbsp;·&nbsp; Time: ${mock.timeLimit} mins</p>
+                                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                    <a href="mock-exam-room.html?mockId=${mock.id}" class="btn btn-primary" style="font-size: 0.8rem; padding: 0.4rem 0.9rem;">Retake Exam</a>
+                                    <button type="button" class="btn btn-secondary" style="font-size: 0.8rem; padding: 0.4rem 0.9rem;" onclick="const el = document.getElementById('mock_q_${idx}'); el.style.display = el.style.display === 'none' ? 'block' : 'none';">Questions (${qCount})</button>
+                                </div>
+                                <div id="mock_q_${idx}" style="display: none; margin-top: 1rem; max-height: 240px; overflow-y: auto;">${qHtml}</div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+        }
+
         auth.onAuthStateChanged(async (user) => {
             if (!user) return;
 
             
             try {
-                const createdEl = document.getElementById("myCreatedExamsList");
-                const created = await getMyCreatedExamsWithStats();
-                if (!created || created.length === 0) {
-                    createdEl.innerHTML = `<p style="color: var(--text-muted);">You haven't created any exams yet. Use "Set Exam" to create one.</p>`;
-                } else {
-                    const statusColors = {
-                        "Running":     { bg: "rgba(21,128,61,0.2)",  color: "#4ade80", border: "rgba(74,222,128,0.35)" },
-                        "Ended":       { bg: "rgba(185,28,28,0.18)", color: "#f87171", border: "rgba(248,113,113,0.35)" },
-                        "Yet to start":{ bg: "rgba(180,83,9,0.2)",   color: "#fbbf24", border: "rgba(251,191,36,0.35)" },
-                        "Scheduled":   { bg: "var(--bg-inset)",      color: "var(--text-muted)", border: "var(--border-md)" }
-                    };
-                    createdEl.innerHTML = `
-                        <div style="display: grid; gap: 1rem; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));">
-                            ${created.map(ex => {
-                                const st = getExamScheduleStatus(ex);
-                                const c = statusColors[st] || statusColors["Scheduled"];
-                                return `
-                                <div class="mock-item-card">
-                                    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:0.5rem;">
-                                        <h4 style="margin-bottom: 0.4rem; color: var(--text-heading); font-size: 1rem;">${ex.title}</h4>
-                                        <span style="background:${c.bg}; color:${c.color}; border:1px solid ${c.border}; padding:0.15rem 0.55rem; border-radius:999px; font-size:0.72rem; font-weight:700; white-space:nowrap;">${st}</span>
-                                    </div>
-                                    <p style="color: var(--text-muted); font-size: 0.8rem; margin-bottom: 0.5rem;">Code: <strong style="color:var(--brown-200);">${ex.code}</strong> &nbsp;·&nbsp; Questions: ${ex.questionCount}</p>
-                                    <p style="color: var(--text-muted); font-size: 0.8rem;">👥 Submissions: ${ex.submissions} &nbsp;·&nbsp; 📊 Avg score: <strong>${ex.avgScore === null ? '—' : ex.avgScore + '%'}</strong></p>
-                                    <div style="margin-top:0.75rem;">
-                                        <a href="../teacher/edit-exam.html?examId=${ex.id}" class="btn btn-secondary" style="font-size: 0.8rem; padding: 0.4rem 0.9rem;">✏️ Edit Timing &amp; Questions</a>
-                                         <button type="button" class="btn btn-secondary" style="font-size: 0.8rem; padding: 0.4rem 0.9rem; cursor:pointer;" onclick="openSubmissions('${ex.id}', '${(ex.title || '').replace(/'/g, "\\'")}')">📥 Submissions</button>
-                                       
-                                    </div>
-                                </div>`;
-                            }).join('')}
-                        </div>`;
-                }
+                createdExamsData = await getMyCreatedExamsWithStats();
+                renderCreatedExams(document.getElementById("createdSearch").value);
             } catch (e) {
                 console.warn("Could not load created exams:", e);
                 document.getElementById("myCreatedExamsList").innerHTML = `<p style="color: var(--text-muted);">Could not load your exams.</p>`;
             }
 
             try {
-                const mockExams = await getStudentMockExams();
-                const mockExamsEl = document.getElementById("mockExamsList");
-
-                if (!mockExams || mockExams.length === 0) {
-                    mockExamsEl.innerHTML = `
-                        <div class="empty-state" style="background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-lg); padding:3rem 1.5rem;">
-                            <div class="icon">🧪</div>
-                            No practice exams generated yet. Click "+ New Practice Exam" above to create one!
-                        </div>`;
-                } else {
-                    mockExamsEl.innerHTML = `
-                        <div style="display: grid; gap: 1rem; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));">
-                            ${mockExams.map((mock, idx) => {
-                                const qCount = mock.numQuestions || (mock.questions ? mock.questions.length : 0);
-                                const qHtml = (mock.questions && mock.questions.length > 0)
-                                    ? mock.questions.map((q, qIdx) => `
-                                        <div style="background: var(--bg-inset); padding: 0.65rem 0.85rem; border-radius: var(--radius-md); margin-top: 0.4rem; font-size: 0.82rem; border: 1px solid var(--border);">
-                                            <strong style="color: var(--text-heading);">Q${qIdx + 1}: ${q.text}</strong>
-                                            <div style="color: #34d399; margin-top: 0.25rem; font-weight:600;">✓ Ans: ${q.correctAnswer}</div>
-                                            ${q.explanation ? `<div style="color: var(--text-muted); font-size: 0.78rem; margin-top: 0.2rem;">${q.explanation}</div>` : ''}
-                                        </div>
-                                    `).join('')
-                                    : `<p style="font-size: 0.8rem; color: var(--text-muted);">Questions stored in practice record.</p>`;
-
-                                return `
-                                    <div class="mock-item-card">
-                                        <h4 style="margin-bottom: 0.4rem; color: var(--text-heading); font-size: 1rem;">${mock.title || 'Practice Exam'}</h4>
-                                        <p style="color: var(--text-muted); font-size: 0.8rem; margin-bottom: 1rem;">Questions: ${qCount} &nbsp;·&nbsp; Time: ${mock.timeLimit} mins</p>
-                                        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                                            <a href="mock-exam-room.html?mockId=${mock.id}" class="btn btn-primary" style="font-size: 0.8rem; padding: 0.4rem 0.9rem;">Retake Exam</a>
-                                            <button type="button" class="btn btn-secondary" style="font-size: 0.8rem; padding: 0.4rem 0.9rem;" onclick="const el = document.getElementById('mock_q_${idx}'); el.style.display = el.style.display === 'none' ? 'block' : 'none';">Questions (${qCount})</button>
-                                        </div>
-                                        <div id="mock_q_${idx}" style="display: none; margin-top: 1rem; max-height: 240px; overflow-y: auto;">${qHtml}</div>
-                                    </div>
-                                `;
-                            }).join('')}
-                        </div>
-                    `;
-                }
+                mockExamsData = await getStudentMockExams();
+                renderMockExams(document.getElementById("mockSearch").value);
             } catch (e) {
                 console.warn("Could not load practice exams:", e);
                 document.getElementById("mockExamsList").innerHTML = `<p style="color: var(--text-muted);">No practice exams generated yet.</p>`;
             }
         });
+
+        document.getElementById("createdSearch").addEventListener("input", (e) => renderCreatedExams(e.target.value));
+        document.getElementById("mockSearch").addEventListener("input", (e) => renderMockExams(e.target.value));
     </script>
     <script type="module" src="../../js/nav.js"></script>
 

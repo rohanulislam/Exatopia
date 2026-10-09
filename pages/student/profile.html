@@ -190,6 +190,7 @@
         <div class="tab-content" id="tab-history">
             <div class="profile-card">
                 <div class="section-title">📋 Exam History</div>
+                <input type="text" id="historySearch" placeholder="🔍 Search exam name…" style="margin-bottom:1rem;">
                 <div id="historyContainer">
                     <p style="color:var(--text-muted);">Loading history...</p>
                 </div>
@@ -278,6 +279,8 @@
             });
         });
 
+        document.getElementById("historySearch").addEventListener("input", (e) => renderHistoryTable(e.target.value));
+
         let pendingProfileUpdates = null;
 
         
@@ -365,14 +368,29 @@
             loadHistory(stats.history);
         }
 
+        let historyData = [];
+
         function loadHistory(history) {
+            historyData = history || [];
+            renderHistoryTable(document.getElementById("historySearch").value);
+        }
+
+        function renderHistoryTable(filter = "") {
             const container = document.getElementById("historyContainer");
-            if (!history || history.length === 0) {
+            const q = filter.trim().toLowerCase();
+
+            if (!historyData.length) {
                 container.innerHTML = `<p style="color:var(--text-muted);">No exam history yet. Complete some exams to see your results here.</p>`;
                 return;
             }
 
-            const rows = history.map((att, idx) => {
+            const filtered = historyData.filter(att => (att.examTitle || "").toLowerCase().includes(q));
+            if (!filtered.length) {
+                container.innerHTML = `<p style="color:var(--text-muted);">No exams match "${filter.trim()}".</p>`;
+                return;
+            }
+
+            const rows = filtered.map((att, idx) => {
                 const typeTag = att.isViva
                     ? `<span style="background:rgba(120,53,15,0.3);color:var(--accent);border:1px solid rgba(200,133,74,0.4);padding:0.15rem 0.5rem;border-radius:4px;font-size:0.72rem;font-weight:600;">Viva</span>`
                     : att.isMock

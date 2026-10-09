@@ -113,6 +113,7 @@
             <div class="section-header">
                 <h3>My Exam History &amp; Grades (Participated)</h3>
             </div>
+            <input type="text" id="historySearch" placeholder="🔍 Search exam name…" style="margin-bottom:0.9rem;">
             <div id="examHistoryList" style="display: flex; flex-direction: column; gap: 0.75rem;">
                 <div class="empty-state"><div class="icon">⏳</div>Loading history…</div>
             </div>
@@ -123,6 +124,7 @@
             <div class="section-header">
                 <h3>Exams I Created</h3>
             </div>
+            <input type="text" id="createdSearch" placeholder="🔍 Search exam name…" style="margin-bottom:0.9rem;">
             <div id="createdExamsList" style="display: flex; flex-direction: column; gap: 0.75rem;">
                 <div class="empty-state"><div class="icon">⏳</div>Loading created exams…</div>
             </div>
@@ -137,83 +139,109 @@
 
         protectRoute(["student"]);
 
-        async function loadDashboard() {
+        let examHistoryData = [];
+        let createdExamsData = [];
+
+        function renderExamHistory(filter = "") {
             const historyEl = document.getElementById("examHistoryList");
+            const q = filter.trim().toLowerCase();
+            const items = examHistoryData.filter(item => (item.examTitle || "").toLowerCase().includes(q));
 
+            if (!examHistoryData.length) {
+                historyEl.innerHTML = `<div class="empty-state"><div class="icon">📭</div>No completed exams yet. Join an exam or start a practice session!</div>`;
+                return;
+            }
+
+            if (!items.length) {
+                historyEl.innerHTML = `<div class="empty-state"><div class="icon">🔍</div>No exams match "${filter.trim()}".</div>`;
+                return;
+            }
+
+            historyEl.innerHTML = `
+                <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                    ${items.map(item => {
+                        const dateStr = item.submittedAt
+                            ? (item.submittedAt.toDate ? item.submittedAt.toDate().toLocaleString() : new Date(item.submittedAt).toLocaleString())
+                            : "Recently";
+
+                        const typeLabel = item.isMock ? '🧪 Practice' : item.isViva ? '🎤 AI Viva' : '📝 Formal Exam';
+
+                        return `
+                            <div class="history-item">
+                                <div>
+                                    <div style="font-size: 0.97rem; font-weight: 700; color: var(--text-heading); margin-bottom: 0.3rem;">${item.examTitle}</div>
+                                    <div style="font-size: 0.78rem; color: var(--text-muted);">
+                                        📅 ${dateStr} &nbsp;·&nbsp; ${typeLabel}
+                                    </div>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 1.25rem;">
+                                    <div class="score-chip">
+                                        <div class="score-num">${item.score} / ${item.total}</div>
+                                        <div class="score-pct">${item.percentage}%</div>
+                                    </div>
+                                    <div class="grade-badge" style="background: ${item.gradeBg}; color: ${item.gradeColor}; border: 1px solid ${item.gradeColor};">
+                                        Grade ${item.grade}
+                                    </div>
+                                </div>
+                            </div>
+                            <div style="margin-top: -0.4rem; padding: 0 0.25rem;">
+                                <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+                                    ${!item.isViva ? `<button type="button" class="btn btn-secondary" style="font-size:0.75rem; padding:0.3rem 0.8rem;" onclick="toggleHistoryQuestions('${item.isMock ? (item.mockId || item.examId) : item.examId}', 'hq_${item.id}', ${!!item.isMock})">📄 View Questions</button>` : ''}
+                                </div>
+                                <div id="hq_${item.id}" style="display:none; margin-top:0.5rem; max-height:260px; overflow-y:auto;"></div>
+                                ${(item.isViva && item.messages && item.messages.length) ? `
+                                    <div style="margin-top:0.5rem;">
+                                        <button type="button" class="btn btn-secondary" style="font-size:0.75rem; padding:0.3rem 0.8rem;" onclick="const el = document.getElementById('hist_viva_${item.id}'); el.style.display = el.style.display === 'none' ? 'block' : 'none';">💬 View Conversation (${item.messages.length})</button>
+                                        <div id="hist_viva_${item.id}" style="display:none; margin-top:0.5rem; max-height:220px; overflow-y:auto;">
+                                            ${item.messages.map(m => `
+                                                <div style="background:var(--bg-inset);padding:0.55rem 0.7rem;border-radius:6px;margin-top:0.35rem;font-size:0.8rem;border:1px solid var(--border);">
+                                                    <strong style="color:${m.role === 'student' ? '#5eead4' : '#a5b4fc'};">${m.role === 'student' ? '🎓 You' : '🤖 Examiner'}:</strong>
+                                                    <span style="color:var(--text-main);">${(m.text || '').replace(/</g, '&lt;')}</span>
+                                                </div>`).join('')}
+                                        </div>
+                                    </div>` : ''}
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+        }
+
+        async function loadDashboard() {
             try {
-                const history = await getStudentExamHistory();
-                if (!history || history.length === 0) {
-                    historyEl.innerHTML = `<div class="empty-state"><div class="icon">📭</div>No completed exams yet. Join an exam or start a practice session!</div>`;
-                } else {
-                    historyEl.innerHTML = `
-                        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
-                            ${history.map(item => {
-                                const dateStr = item.submittedAt
-                                    ? (item.submittedAt.toDate ? item.submittedAt.toDate().toLocaleString() : new Date(item.submittedAt).toLocaleString())
-                                    : "Recently";
-
-                                const typeLabel = item.isMock ? '🧪 Practice' : item.isViva ? '🎤 AI Viva' : '📝 Formal Exam';
-
-                                return `
-                                    <div class="history-item">
-                                        <div>
-                                            <div style="font-size: 0.97rem; font-weight: 700; color: var(--text-heading); margin-bottom: 0.3rem;">${item.examTitle}</div>
-                                            <div style="font-size: 0.78rem; color: var(--text-muted);">
-                                                📅 ${dateStr} &nbsp;·&nbsp; ${typeLabel}
-                                            </div>
-                                        </div>
-                                        <div style="display: flex; align-items: center; gap: 1.25rem;">
-                                            <div class="score-chip">
-                                                <div class="score-num">${item.score} / ${item.total}</div>
-                                                <div class="score-pct">${item.percentage}%</div>
-                                            </div>
-                                            <div class="grade-badge" style="background: ${item.gradeBg}; color: ${item.gradeColor}; border: 1px solid ${item.gradeColor};">
-                                                Grade ${item.grade}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div style="margin-top: -0.4rem; padding: 0 0.25rem;">
-                                        <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
-                                            ${!item.isViva ? `<button type="button" class="btn btn-secondary" style="font-size:0.75rem; padding:0.3rem 0.8rem;" onclick="toggleHistoryQuestions('${item.isMock ? (item.mockId || item.examId) : item.examId}', 'hq_${item.id}', ${!!item.isMock})">📄 View Questions</button>` : ''}
-                                        </div>
-                                        <div id="hq_${item.id}" style="display:none; margin-top:0.5rem; max-height:260px; overflow-y:auto;"></div>
-                                        ${(item.isViva && item.messages && item.messages.length) ? `
-                                            <div style="margin-top:0.5rem;">
-                                                <button type="button" class="btn btn-secondary" style="font-size:0.75rem; padding:0.3rem 0.8rem;" onclick="const el = document.getElementById('hist_viva_${item.id}'); el.style.display = el.style.display === 'none' ? 'block' : 'none';">💬 View Conversation (${item.messages.length})</button>
-                                                <div id="hist_viva_${item.id}" style="display:none; margin-top:0.5rem; max-height:220px; overflow-y:auto;">
-                                                    ${item.messages.map(m => `
-                                                        <div style="background:var(--bg-inset);padding:0.55rem 0.7rem;border-radius:6px;margin-top:0.35rem;font-size:0.8rem;border:1px solid var(--border);">
-                                                            <strong style="color:${m.role === 'student' ? '#5eead4' : '#a5b4fc'};">${m.role === 'student' ? '🎓 You' : '🤖 Examiner'}:</strong>
-                                                            <span style="color:var(--text-main);">${(m.text || '').replace(/</g, '&lt;')}</span>
-                                                        </div>`).join('')}
-                                                </div>
-                                            </div>` : ''}
-                                    </div>
-                                `;
-                            }).join('')}
-                        </div>
-                    `;
-                }
+                examHistoryData = await getStudentExamHistory();
+                renderExamHistory(document.getElementById("historySearch").value);
             } catch (histErr) {
                 console.warn("Could not load exam history:", histErr);
-                historyEl.innerHTML = `<div class="empty-state"><div class="icon">⚠️</div>No history available yet.</div>`;
+                document.getElementById("examHistoryList").innerHTML = `<div class="empty-state"><div class="icon">⚠️</div>No history available yet.</div>`;
             }
         }
 
-        async function loadCreatedExams() {
+        function renderCreatedExams(filter = "") {
             const listEl = document.getElementById("createdExamsList");
-            try {
-                const created = await getMyCreatedExamsWithStats();
-                if (!created || created.length === 0) {
-                    listEl.innerHTML = `<div class="empty-state"><div class="icon">📝</div>You haven't created any exams yet.</div>`;
-                } else {
-                    const statusColors = {
-                        "Running":     { bg: "rgba(21,128,61,0.2)",  color: "#4ade80", border: "rgba(74,222,128,0.35)" },
-                        "Ended":       { bg: "rgba(185,28,28,0.18)", color: "#f87171", border: "rgba(248,113,113,0.35)" },
-                        "Yet to start":{ bg: "rgba(180,83,9,0.2)",   color: "#fbbf24", border: "rgba(251,191,36,0.35)" },
-                        "Scheduled":   { bg: "var(--bg-inset)",      color: "var(--text-muted)", border: "var(--border-md)" }
-                    };
-                    listEl.innerHTML = created.map(ex => {
+            const q = filter.trim().toLowerCase();
+            const items = createdExamsData.filter(ex => (ex.title || "").toLowerCase().includes(q));
+
+            if (!createdExamsData.length) {
+                listEl.innerHTML = `<div class="empty-state"><div class="icon">📝</div>You haven't created any exams yet.</div>`;
+                return;
+            }
+
+            if (!items.length) {
+                listEl.innerHTML = `<div class="empty-state"><div class="icon">🔍</div>No exams match "${filter.trim()}".</div>`;
+                return;
+            }
+
+            const statusColors = {
+                "Running":     { bg: "rgba(21,128,61,0.2)",  color: "#4ade80", border: "rgba(74,222,128,0.35)" },
+                "Ended":       { bg: "rgba(185,28,28,0.18)", color: "#f87171", border: "rgba(248,113,113,0.35)" },
+                "Yet to start":{ bg: "rgba(180,83,9,0.2)",   color: "#fbbf24", border: "rgba(251,191,36,0.35)" },
+                "Scheduled":   { bg: "var(--bg-inset)",      color: "var(--text-muted)", border: "var(--border-md)" }
+            };
+
+            listEl.innerHTML = `
+                <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                    ${items.map(ex => {
                         const st = getExamScheduleStatus(ex);
                         const c = statusColors[st] || statusColors["Scheduled"];
                         return `
@@ -234,13 +262,23 @@
                                 <a href="../teacher/edit-exam.html?examId=${ex.id}" class="btn btn-secondary" style="font-size: 0.78rem; padding: 0.35rem 0.85rem;">✏️ Edit</a>
                             </div>
                         </div>`;
-                    }).join('');
-                }
+                    }).join('')}
+                </div>
+            `;
+        }
+
+        async function loadCreatedExams() {
+            try {
+                createdExamsData = await getMyCreatedExamsWithStats();
+                renderCreatedExams(document.getElementById("createdSearch").value);
             } catch (err) {
                 console.warn("Could not load created exams:", err);
-                listEl.innerHTML = `<div class="empty-state"><div class="icon">⚠️</div>Could not load created exams.</div>`;
+                document.getElementById("createdExamsList").innerHTML = `<div class="empty-state"><div class="icon">⚠️</div>Could not load created exams.</div>`;
             }
         }
+
+        document.getElementById("historySearch").addEventListener("input", (e) => renderExamHistory(e.target.value));
+        document.getElementById("createdSearch").addEventListener("input", (e) => renderCreatedExams(e.target.value));
 
         window.toggleHistoryQuestions = async (examId, targetId, isMock = false) => {
             const el = document.getElementById(targetId);

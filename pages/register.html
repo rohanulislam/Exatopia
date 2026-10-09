@@ -166,7 +166,6 @@
             const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
             let apiUrl = "/api/send-otp";
 
-            // If running on a static dev server like Live Server (port 5500/8080), direct API calls to Node server on port 3000
             if (isLocal && window.location.port !== "3000" && window.location.port !== "") {
                 apiUrl = "http://localhost:3000/api/send-otp";
             }
@@ -201,21 +200,16 @@
         let otpExpiryTimer = null;
 
         async function cleanupUnverifiedUser() {
-            // Never fight with an in-flight registration submit
             if (registrationFinalized || registrationInProgress) return;
             const u = auth.currentUser;
             if (!u) return;
             try {
                 const snap = await getDoc(doc(db, "users", u.uid));
                 if (snap.exists()) return;
-                if (registrationInProgress) return; // re-check after network round-trip
+                if (registrationInProgress) return;
                 try {
                     await deleteUser(u);
                 } catch (delErr) {
-                    // A long-persisted session can hold a stale token, which the
-                    // Identity Toolkit rejects for account deletion (HTTP 400).
-                    // Signing out is enough here: the registration form re-authenticates
-                    // with fresh credentials and reclaims the leftover account on submit.
                     console.warn("[register] Auto-cleanup delete skipped:", delErr.message);
                 }
                 await signOut(auth);
@@ -224,7 +218,6 @@
             }
         }
 
-        // ── OTP expiry: remove the never-verified Gmail account from Firebase Auth ──
         function stopOtpExpiryWatch() {
             if (otpExpiryTimer) { clearInterval(otpExpiryTimer); otpExpiryTimer = null; }
         }
@@ -241,9 +234,6 @@
             }, 1000);
         }
 
-        // Called when the user leaves the OTP unverified past its 2-minute age.
-        // The Gmail account created for this attempt is removed from Firebase
-        // Authentication so no orphan, unverified accounts accumulate.
         async function expirePendingRegistration() {
             if (registrationFinalized || finalizingRegistration) return;
             registrationInProgress = false;
@@ -255,8 +245,6 @@
             const u = auth.currentUser;
             if (u) {
                 try {
-                    // Only remove if the profile was never saved — another tab
-                    // may have completed verification in the meantime.
                     const snap = await getDoc(doc(db, "users", u.uid));
                     if (snap.exists()) {
                         accountRemoved = false;
@@ -270,7 +258,6 @@
                 }
             }
 
-            // Reset the UI back to a fresh registration form
             document.getElementById("successBanner").style.display = "none";
             document.getElementById("registerForm").style.display = "block";
             document.getElementById("otpInput").value = "";
@@ -313,31 +300,24 @@
             try {
                 pendingUser = { name, email, role, institution };
                 registrationInProgress = true;
-                stopOtpExpiryWatch(); // clear any timer from a previous attempt
+                stopOtpExpiryWatch();
 
                 let created = null;
 
-                // Pre-check whether the email already exists in Firebase Auth so we
-                // never trigger a guaranteed-to-fail signUp (HTTP 400 EMAIL_EXISTS)
-                // when a leftover unverified account is still around.
                 const existingMethods = await fetchSignInMethodsForEmail(auth, email).catch(() => []);
                 if (existingMethods && existingMethods.length > 0) {
-                    // Email is already registered — sign in with the password provided.
                     const cred = await signInWithEmailAndPassword(auth, email, password);
                     const snap = await getDoc(doc(db, "users", cred.user.uid));
                     if (snap.exists()) {
                         throw new Error("An account with this email already exists. Please sign in.");
                     }
-                    // Leftover account from an unfinished registration — reclaim it.
-                    // We just signed in, so the token is fresh and deletion is allowed.
                     try {
                         await deleteUser(cred.user);
                     } catch (delErr) {
-                        // Safety net: force a fresh ID token, then retry once.
                         await cred.user.getIdToken(true);
                         await deleteUser(cred.user);
                     }
-                    await signOut(auth); // deleteUser invalidates the session; be explicit
+                    await signOut(auth);
                     created = await createAuthAccount(name, email, password, role, institution);
                 } else {
                     created = await createAuthAccount(name, email, password, role, institution);
@@ -371,7 +351,7 @@
                 document.getElementById("otpExpiryNote").textContent = "OTP expires in 2 minutes.";
                 document.getElementById("registerForm").style.display = "none";
                 document.getElementById("successBanner").style.display = "block";
-                startOtpExpiryWatch(); // remove the account if OTP goes unverified
+                startOtpExpiryWatch();
             } catch (err) {
                 stopOtpExpiryWatch();
                 registrationInProgress = false;
@@ -404,7 +384,7 @@
             document.getElementById("otpExpiryNote").textContent = "New OTP expires in 2 minutes.";
             document.getElementById("otpInput").value = "";
             document.getElementById("motherOtpInput").value = "";
-            startOtpExpiryWatch(); // new code = fresh 2-minute window
+            startOtpExpiryWatch();
         });
 
         document.getElementById("verifyOtpBtn").addEventListener("click", async () => {
@@ -419,7 +399,7 @@
             if (isAdminFlow && (!motherOtp || !mother || mother !== motherOtp)) { otpError.textContent = "Incorrect admin-recovery OTP."; return; }
 
             try {
-                finalizingRegistration = true; // blocks the expiry timer mid-save
+                finalizingRegistration = true;
                 stopOtpExpiryWatch();
                 await finalizeRegistration(pendingUser.name, pendingUser.email, pendingUser.role, pendingUser.institution, pendingUser.uid);
                 registrationFinalized = true;

@@ -983,7 +983,6 @@ export async function getExamSubmissions(examId) {
         const q = query(collection(db, "attempts"), where("examId", "==", examId));
         const snap = await getDocs(q);
 
-        // Resolve student names once per unique studentId (users collection stores the display name)
         const studentIds = [...new Set(snap.docs.map((d) => d.data().studentId).filter(Boolean))];
         const nameCache = {};
         await Promise.all(studentIds.map(async (sid) => {
@@ -998,7 +997,7 @@ export async function getExamSubmissions(examId) {
         const submissions = [];
         snap.docs.forEach((docSnap) => {
             const data = docSnap.data();
-            if (!data.submittedAt) return; // exam still in progress — not a finished submission
+            if (!data.submittedAt) return;
 
             const score = parseInt(data.score ?? 0);
             const total = parseInt(data.total ?? 0);
