@@ -95,9 +95,11 @@
         import { protectRoute } from "../../js/guard.js";
         import { auth, db } from "../../js/firebase-config.js";
         import { getStudentMockExams, getMyCreatedExamsWithStats, getExamScheduleStatus } from "../../js/exam.js";
+        import { showSubmissionsModal } from "../../js/submissions-modal.js";
         import { collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         protectRoute(["student"]);
+        window.openSubmissions = (examId, examTitle) => showSubmissionsModal(examId, examTitle);
 
         document.getElementById("joinForm").addEventListener("submit", async (e) => {
             e.preventDefault();
@@ -152,6 +154,8 @@
                                     <p style="color: var(--text-muted); font-size: 0.8rem;">👥 Submissions: ${ex.submissions} &nbsp;·&nbsp; 📊 Avg score: <strong>${ex.avgScore === null ? '—' : ex.avgScore + '%'}</strong></p>
                                     <div style="margin-top:0.75rem;">
                                         <a href="../teacher/edit-exam.html?examId=${ex.id}" class="btn btn-secondary" style="font-size: 0.8rem; padding: 0.4rem 0.9rem;">✏️ Edit Timing &amp; Questions</a>
+                                         <button type="button" class="btn btn-secondary" style="font-size: 0.8rem; padding: 0.4rem 0.9rem; cursor:pointer;" onclick="openSubmissions('${ex.id}', '${(ex.title || '').replace(/'/g, "\\'")}')">📥 Submissions</button>
+                                       
                                     </div>
                                 </div>`;
                             }).join('')}
