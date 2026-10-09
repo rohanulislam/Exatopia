@@ -173,7 +173,7 @@
                 </div>
             </div>
             <div class="profile-card">
-                <div class="section-title">📋 Exams I Participated In</div>
+                <div class="section-title">Exams I Participated In</div>
                 <div id="participatedExamsList" style="color: var(--text-muted); font-size: 0.88rem;">
                     <p>Loading...</p>
                 </div>
@@ -246,9 +246,11 @@
         import { auth } from "../../js/firebase-config.js";
         import { logoutUser, getUserProfile, updateUserProfile, changeUserPassword, sendPasswordReset } from "../../js/auth.js";
         import { getTeacherProfileStats, getStudentExamHistory, getMyCreatedExamsWithStats, getExamScheduleStatus } from "../../js/exam.js";
+        import { showSubmissionsModal } from "../../js/submissions-modal.js";
         import { showToast, drawPieChart, compressImage } from "../../js/ui-utils.js";
 
         protectRoute(["teacher"]);
+        window.openSubmissions = (examId, examTitle) => showSubmissionsModal(examId, examTitle);
 
         
         document.querySelectorAll(".tab-btn").forEach(btn => {
@@ -311,6 +313,7 @@
                                 <div style="font-size:1.1rem; font-weight:800; color:var(--brown-200);">${ex.avgScore === null ? '—' : ex.avgScore + '%'}</div>
                                 <div style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase;">Avg · ${ex.submissions} submissions</div>
                                 <a href="edit-exam.html?examId=${ex.id}" class="btn btn-secondary" style="font-size:0.75rem; padding:0.3rem 0.8rem; display:inline-block; margin-top:0.4rem;">✏️ Edit</a>
+                                <button type="button" class="btn btn-secondary" style="font-size:0.75rem; padding:0.3rem 0.8rem; display:inline-block; margin-top:0.4rem; cursor:pointer;" onclick="openSubmissions('${ex.id}', '${(ex.title || '').replace(/'/g, "\\'")}')">📥 Submissions</button>
                             </div>
                         </div>`;
                     }).join('');
