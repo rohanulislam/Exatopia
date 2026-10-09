@@ -975,3 +975,65 @@ export async function getTeacherProfileStats() {
         gradeDistribution
     };
 }
+export async function getExamSubmissions(examId) {
+    const user = auth.currentUser;
+    if (!user) throw new Error("User not authenticated.");
+
+    try {
+        const q = query(collection(db, "attempts"), where("examId", "==", examId));
+        const snap = await getDocs(q);
+
+        // Resolve student names once per unique studentId (users collection stores the display name)
+        const studentIds = [...new Set(snap.docs.map((d) => d.data().studentId).filter(Boolean))];
+        const nameCache = {};
+        await Promise.all(studentIds.map(async (sid) => {
+            try {
+                const uSnap = await getDoc(doc(db, "users", sid));
+                nameCache[sid] = uSnap.exists() ? (uSnap.data().name || "") : "";
+            } catch (e) {
+                nameCache[sid] = "";
+            }
+        }));
+
+        const submissions = [];
+        snap.docs.forEach((docSnap) => {
+            const data = docSnap.data();
+            if (!data.submittedAt) return; // exam still in progress — not a finished submission
+
+            const score = parseInt(data.score ?? 0);
+            const total = parseInt(data.total ?? 0);
+            const percentage = total > 0 ? Math.round((score / total) * 100) : (parseInt(data.percentage) || 0);
+            const gradeInfo = getGrade(percentage);
+            const email = data.studentEmail || "";
+
+            submissions.push({
+                id: docSnap.id,
+                studentId: data.studentId || "",
+                name: nameCache[data.studentId] || email.split("@")[0] || "Unknown",
+                email: email || "—",
+                score,
+                total,
+                percentage,
+                grade: gradeInfo.grade,
+                gradeColor: gradeInfo.color,
+                gradeBg: gradeInfo.bg,
+                submittedAt: data.submittedAt,
+                violationCount: parseInt(data.violationCount) || 0,
+                maxViolations: parseInt(data.maxViolations) || 0,
+                autoSubmitted: !!data.autoSubmitted
+            });
+        });
+
+        submissions.sort((a, b) => {
+            const t = (x) => x.submittedAt
+                ? (x.submittedAt.toDate ? x.submittedAt.toDate().getTime() : new Date(x.submittedAt).getTime())
+                : 0;
+            return t(b) - t(a);
+        });
+
+        return submissions;
+    } catch (err) {
+        console.warn("Could not load exam submissions:", err.message);
+        return [];
+    }
+}
