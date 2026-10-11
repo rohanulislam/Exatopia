@@ -9,20 +9,20 @@ Exatopia is an end-to-end, full-stack examination and proctoring platform design
 ---
 
 ## Table of Contents
-- [Key Features](#key-features)
-- [System Architecture](#system-architecture)
-- [Tech Stack](#tech-stack)
-- [Project Directory Structure](#project-directory-structure)
-- [Getting Started](#getting-started)
-  - [Prerequisites](#prerequisites)
-  - [Installation & Setup](#installation--setup)
-  - [Environment Variables](#environment-variables)
-- [API Reference](#api-reference)
-- [Data Model & Firestore Schema](#data-model--firestore-schema)
-- [Proctoring & Anti-Cheating Engine](#proctoring--anti-cheating-engine)
-- [AI Integration & Model Fallback](#ai-integration--model-fallback)
-- [Grading Scale](#grading-scale)
-- [License](#license)
+i [Key Features](#key-features)
+ii [System Architecture](#system-architecture)
+iii [Tech Stack](#tech-stack)
+iv [Project Directory Structure](#project-directory-structure)
+v [Getting Started](#getting-started)
+  a [Prerequisites](#prerequisites)
+  b [Installation & Setup](#installation--setup)
+  c [Environment Variables](#environment-variables)
+vi [API Reference](#api-reference)
+vii [Data Model & Firestore Schema](#data-model--firestore-schema)
+viii [Proctoring & Anti-Cheating Engine](#proctoring--anti-cheating-engine)
+ix [AI Integration & Model Fallback](#ai-integration--model-fallback)
+x [Grading Scale](#grading-scale)
+-xi [License](#license)
 
 ---
 
