@@ -2,7 +2,7 @@
 
 **AI-Powered Examination & Live Proctoring Platform**
 
-Exatopia is an end-to-end, full-stack examination and proctoring platform designed to streamline automated assessment, online proctoring, and oral evaluation. It empowers educators to generate code-locked formal exams from raw source materials (PDF notes, syllabi) while enabling students to undergo AI-supervised testing, practice with personalized mock exams, and participate in interactive voice-driven viva sessions.
+Exatopia is an end-to-end, full-stack examination and proctoring platform designed to streamline automated assessment, online proctoring, and oral evaluation. It empowers educators to generate code-locked formal exams from raw source materials (PDF notes, syllabus) while enabling students to undergo AI-supervised testing, practice with personalized mock exams, and participate in interactive voice-driven viva sessions.
 
 **Live Demo:** [https://exatopia-1.onrender.com](https://exatopia-1.onrender.com)
 
