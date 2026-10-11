@@ -28,23 +28,23 @@ Exatopia is an end-to-end, full-stack examination and proctoring platform design
 
 ## Key Features
 
-### 📝 Examination & Assessment
+###  Examination & Assessment
 * **Formal Exam Management:** Teachers can create scheduled, code-locked (`EX-XXXX`) exams with custom start/end time windows, timer limits, and strict single-attempt policies.
 * **AI Question Generation:** Automatically generate Multiple Choice Questions (MCQs) from uploaded PDFs (with page-range filters) or pasted syllabus text via Large Language Models.
 * **AI Practice Exams (Mocks):** Students can generate self-assessment exams (up to 100 questions) with instant scoring, offline caching, and detailed explanations.
 * **AI Voice Viva (Oral Exam):** Real-time, spoken evaluation featuring 3 dynamic questions per session. Leverages browser native Web Speech APIs (`SpeechRecognition` and `SpeechSynthesis`) for voice input and feedback playback.
 
-### 🛡️ Real-Time Browser Proctoring
+###  Real-Time Browser Proctoring
 * **Fullscreen Enforcement:** Mandatory full-screen start gate prior to exam initialization.
 * **Comprehensive Event Tracking:** Monitors tab switching, window blurring, fullscreen exits, right-clicks, DevTools opening, viewing page source, print commands, page saving, and copy/cut/paste actions.
 * **Automatic Submission:** Violations are deduplicated within a 500 ms cooldown window and logged directly to Cloud Firestore. Accumulating violations up to the set threshold triggers automatic exam termination and submission.
 
-### 🔒 Authentication & Role Management
+###  Authentication & Role Management
 * **Role-Based Access Control (RBAC):** Distinct dashboards and features for `student`, `teacher`, and `admin` roles.
 * **Secure Registration & Auth:** Powered by Firebase Auth with standard email/password login and dual-layer OTP verification via email for account registration and password resets (2-minute TTL).
 * **Admin Control Center:** Comprehensive administrative oversight to manage users, delete accounts, and perform cascading removals of associated exams, attempts, and viva records.
 
-### 📊 Analytics & Submissions
+###  Analytics & Submissions
 * **Automated Grading:** Real-time client-side evaluation against stored answer keys with automatic letter grade assignment (A–F).
 * **Visual Analytics:** Native HTML5 Canvas 2D grade distribution charts for student and teacher analytics dashboards.
 * **Submissions Modal:** Comprehensive submission viewer showing marks, percentage scores, submission timestamps, and flagged proctoring violations.
